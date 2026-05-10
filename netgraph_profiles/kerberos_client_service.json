@@ -1,0 +1,68 @@
+{
+  "name": "kerberos_client_service",
+  "graph": {
+    "import_label": "KerberosGraph",
+    "entity_node_label": "Entity",
+    "source_node_label": "",
+    "destination_node_label": "",
+    "source_caption_fields": [
+      "client"
+    ],
+    "destination_caption_fields": [
+      "service"
+    ],
+    "edge_caption_fields": [
+      "success",
+      "count"
+    ],
+    "source_fields": [
+      "client"
+    ],
+    "destination_fields": [
+      "service"
+    ],
+    "source_node_key_fields": [
+      "client"
+    ],
+    "destination_node_key_fields": [
+      "service"
+    ],
+    "relationship_type": "",
+    "edge_mode": "event",
+    "edge_property_fields": [
+      "client",
+      "service",
+      "success",
+      "forwardable",
+      "renewable",
+      "cipher"
+    ],
+    "timestamp_field": "ts",
+    "event_id_fields": [
+      "uid",
+      "_path",
+      "ts"
+    ],
+    "include_all_event_properties": false,
+    "include_raw_json": false,
+    "aggregations": [],
+    "event_node_label": "Event",
+    "source_event_relationship_type": "SRC_OF",
+    "event_destination_relationship_type": "DST_TO",
+    "event_property_fields": [
+      "client",
+      "service",
+      "success",
+      "forwardable",
+      "renewable",
+      "cipher"
+    ],
+    "event_caption_fields": [
+      "service"
+    ],
+    "timestamp_enabled": true,
+    "timestamp_format": "epoch_float",
+    "timestamp_python_format": "",
+    "timestamp_timezone": "UTC"
+  }
+}

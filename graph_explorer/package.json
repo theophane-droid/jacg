@@ -1,0 +1,16 @@
+{
+  "name": "neo4j-cytoscape-explorer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/tailwind.css --minify",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cytoscape": "^3.30.4",
+    "express": "^4.19.2",
+    "neo4j-driver": "^5.28.1",
+    "tailwindcss": "^3.4.17"
+  }
+}

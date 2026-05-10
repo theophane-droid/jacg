@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .graph-stage { @apply relative min-w-0 overflow-hidden; background: #010409; }
+  .graph-grid { @apply pointer-events-none absolute inset-0; background-image: linear-gradient(rgba(139,148,158,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(139,148,158,.16) 1px, transparent 1px); background-size: 32px 32px; }
+  .graph-context-menu { @apply fixed z-50 min-w-[200px] rounded border p-1 text-xs; background: #161b22; border-color: #30363d; color: #e6edf3; }
+  .graph-context-menu button { @apply min-h-0 w-full border-0 bg-transparent px-2 py-2 text-left text-[11px] shadow-none; }
+  .graph-context-menu button:hover { background: rgba(0,245,212,.14); }
+  .context-separator { @apply my-1 border-t; border-color: #21262d; }
+  .context-color-grid { @apply grid grid-cols-7 gap-1 px-2 py-1; }
+  .context-color-swatch { @apply h-5 w-5 rounded-sm border p-0; border-color: rgba(255,255,255,.22); }
+  .context-color-input { @apply pointer-events-none fixed h-0 w-0 opacity-0; }
+  .timebar-panel { @apply absolute left-3 right-3 bottom-10 z-[3] rounded border p-2; background: rgba(13,17,23,.94); border-color: #30363d; }
+}

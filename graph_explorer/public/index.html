@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JACG - Just a Cyber Graph</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/tailwind.css" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="bg-void text-slate-200 font-sans">
+    <header class="topbar border-b border-gridline/80 bg-cockpit/95">
+      <div class="brand-block min-w-0">
+        <p class="kicker">Just a Cyber Graph</p>
+        <h1 class="truncate text-sm font-semibold tracking-[0.18em] text-slate-100">JACG</h1>
+        <span id="connectionStatus" class="status">Connecting...</span>
+      </div>
+      <div class="toolbar top-toolbar">
+        <div class="toolbar-group database-picker">
+          <span>DB</span>
+          <select id="databaseSelect" title="Neo4j database"></select>
+        </div>
+        <div class="toolbar-group">
+          <button id="toggleQueryPanelButton">Query</button>
+          <button id="toggleToolsPanelButton">Tools</button>
+        </div>
+        <div class="toolbar-group layout-toolbar">
+          <select id="layoutSelect" title="Layout">
+            <option value="cose">force / cose</option>
+            <option value="breadthfirst">breadthfirst</option>
+            <option value="concentric">concentric</option>
+            <option value="circle">circle</option>
+            <option value="grid">grid</option>
+            <option value="random">random</option>
+          </select>
+          <button id="layoutButton">Layout</button>
+          <button id="fitButton">Fit</button>
+        </div>
+        <div class="toolbar-group compact-toolbar">
+          <button id="zoomOutButton">-</button>
+          <button id="zoomInButton">+</button>
+          <button id="clearButton">Clear</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <aside class="panel query-panel">
+        <section class="panel-section event-panel primary-workflow">
+          <div class="section-title-row">
+            <span class="step-pill">1</span>
+            <h2>Investigate events</h2>
+          </div>
+
+          <label for="entitySearch">Search entity</label>
+          <div class="inline-form">
+            <input id="entitySearch" type="search" placeholder="IP, host, account, domain…" />
+            <button id="entitySearchButton" type="button">Search</button>
+          </div>
+          <div id="searchResults" class="search-results"></div>
+
+          <div class="split-row">
+            <div>
+              <label for="entityLabel">Entity type</label>
+              <select id="entityLabel"><option value="__any">auto / any</option></select>
+            </div>
+            <div>
+              <label for="eventLabel">Event type</label>
+              <select id="eventLabel"><option value="__any">auto / any</option></select>
+            </div>
+          </div>
+
+          <label for="eventFilterPreset">Neo4j filter starter</label>
+          <select id="eventFilterPreset">
+            <option value="">Choose a base filter…</option>
+            <option value="toIntegerOrNull(e.id_resp_p) = 443">HTTPS destination port</option>
+            <option value="toIntegerOrNull(e.id_resp_p) IN [80, 443, 8080, 8443]">Web destination ports IN list</option>
+            <option value="toIntegerOrNull(e.id_resp_p) IN [53, 123, 389, 445]">Infra ports IN list</option>
+            <option value="toLower(toString(e.service)) IN ['dns', 'ssl', 'http']">Services IN list</option>
+            <option value="toString(dst.value) IN ['10.0.0.10', '10.0.0.11']">Destination nodes IN list</option>
+            <option value="toLower(toString(e.proto)) = 'tcp'">TCP only</option>
+            <option value="toLower(toString(e.service)) = 'dns'">DNS service</option>
+            <option value="toString(e.uid) CONTAINS 'CHANGEME'">Event UID contains…</option>
+            <option value="coalesce(e.orig_bytes, 0) + coalesce(e.resp_bytes, 0) > 1000000">Large transfer</option>
+            <option value="toLower(toString(e.service)) IN ['smb', 'dce_rpc', 'kerberos', 'ldap', 'rdp', 'winrm']">
+              Lateral movement services
+            </option>
+
+            <option value="toLower(toString(e.proto)) = 'tcp' AND toIntegerOrNull(e.id_resp_p) IN [135, 139, 445, 3389, 5985, 5986]">
+              TCP lateral movement
+            </option>
+          </select>
+
+          <label for="eventCypherFilter">Neo4j WHERE filter</label>
+          <textarea id="eventCypherFilter" class="event-cypher-filter" spellcheck="false" placeholder="Select a starter above, then edit it here…"></textarea>
+          <p class="hint">Boolean expression only. Use <code>src</code>, <code>dst</code>, <code>e</code>. Example: <code>toIntegerOrNull(e.id_resp_p) IN [80, 443, 8443]</code>.</p>
+
+          <button id="aggregateLoadButton" class="primary full" type="button">Load graph</button>
+          <button id="timelineLoadButton" class="hidden-control" type="button">Refresh timeline</button>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-title-row">
+            <span class="step-pill">2</span>
+            <h2>Time window</h2>
+          </div>
+          <label for="timeFrom">From</label>
+          <input id="timeFrom" type="datetime-local" step="1" />
+          <label for="timeTo">To</label>
+          <input id="timeTo" type="datetime-local" step="1" />
+          <p class="hint">Drag the global timeline to update this range.</p>
+        </section>
+
+        <details class="panel-section" open>
+          <summary><h2>Graph shape</h2></summary>
+          <label for="aggregateMode">Visual grouping</label>
+          <select id="aggregateMode"></select>
+          <label for="widthMetric">Edge thickness</label>
+          <select id="widthMetric"></select>
+          <div class="split-row">
+            <div>
+              <label for="aggregateLimit">Graph limit</label>
+              <input id="aggregateLimit" type="number" min="1" max="2000" value="500" />
+            </div>
+            <div>
+              <label for="detailLimit">Detail limit</label>
+              <input id="detailLimit" type="number" min="1" max="1000" value="200" />
+            </div>
+          </div>
+        </details>
+
+        <details class="panel-section manual-query-panel">
+          <summary><h2>Manual Cypher</h2></summary>
+          <label for="presetSelect">Saved query</label>
+          <select id="presetSelect"></select>
+          <label for="cypherInput">Cypher</label>
+          <div class="editor-wrap">
+            <textarea id="cypherInput" spellcheck="false"></textarea>
+            <div id="suggestions" class="suggestions hidden"></div>
+          </div>
+          <label for="paramsInput">Parameters JSON</label>
+          <textarea id="paramsInput" class="params" spellcheck="false">{}</textarea>
+          <div class="button-row manual-buttons">
+            <button id="runButton" class="primary">Execute</button>
+            <button id="schemaButton">Refresh schema</button>
+          </div>
+        </details>
+
+        <section class="summary">
+          <div><span id="nodeCount">0</span><small>nodes</small></div>
+          <div><span id="edgeCount">0</span><small>edges</small></div>
+          <div><span id="rowCount">0</span><small>rows</small></div>
+        </section>
+
+        <details class="panel-section console-panel">
+          <summary><h2>Console</h2></summary>
+          <pre id="messageLog"></pre>
+        </details>
+      </aside>
+
+      <section class="graph-stage">
+        <div class="graph-grid"></div>
+        <div id="cy"></div>
+        <div id="selectionBar" class="hidden">
+          <span id="selectionText">No selection</span>
+        </div>
+        <div class="timebar-panel">
+          <div class="timebar-header">
+            <span>Global timeline</span>
+            <div class="timebar-controls" aria-label="Timeline controls">
+              <button id="timelineStepBackButton" type="button" title="Previous bucket">-</button>
+              <button id="timelineStepForwardButton" type="button" title="Next bucket">+</button>
+            </div>
+            <small id="timebarStatus">No timeline data</small>
+          </div>
+          <div id="timebar" class="timebar"></div>
+        </div>
+      </section>
+
+      <aside class="panel explore-panel">
+        <details class="panel-section" open>
+          <summary><h2>Inspector</h2></summary>
+          <pre id="inspector"></pre>
+        </details>
+
+        <details class="panel-section" open>
+          <summary><h2>Display</h2></summary>
+          <label for="nodeLabelField">Pick node field</label>
+          <select id="nodeLabelField"></select>
+          <label for="nodeLabelFieldsInput">Node display fields</label>
+          <input id="nodeLabelFieldsInput" type="text" value="caption" placeholder="caption,value,import_label" />
+          <label for="edgeLabelField">Pick edge field</label>
+          <select id="edgeLabelField"></select>
+          <label for="edgeLabelFieldsInput">Edge display fields</label>
+          <input id="edgeLabelFieldsInput" type="text" value="caption" placeholder="caption,type,count" />
+          <div class="button-row">
+            <button id="applyStyleButton">Apply labels</button>
+            <button id="labelsToggleButton">Toggle labels</button>
+          </div>
+        </details>
+
+        <details class="panel-section">
+          <summary><h2>Sizing</h2></summary>
+          <label for="nodeSizeField">Node size</label>
+          <select id="nodeSizeField"></select>
+          <label for="edgeWidthField">Edge width</label>
+          <select id="edgeWidthField"></select>
+        </details>
+
+        <details class="panel-section physics-panel">
+          <summary><h2>Layout physics</h2></summary>
+          <div class="range-row">
+            <label for="physicsNodeRepulsion">Repulsion <span id="physicsNodeRepulsionValue"></span></label>
+            <input id="physicsNodeRepulsion" type="range" min="1000" max="26000" step="500" value="11000" />
+          </div>
+          <div class="range-row">
+            <label for="physicsIdealEdgeLength">Edge length <span id="physicsIdealEdgeLengthValue"></span></label>
+            <input id="physicsIdealEdgeLength" type="range" min="40" max="260" step="5" value="115" />
+          </div>
+          <div class="range-row">
+            <label for="physicsEdgeElasticity">Elasticity <span id="physicsEdgeElasticityValue"></span></label>
+            <input id="physicsEdgeElasticity" type="range" min="5" max="220" step="5" value="80" />
+          </div>
+          <div class="range-row">
+            <label for="physicsGravity">Gravity <span id="physicsGravityValue"></span></label>
+            <input id="physicsGravity" type="range" min="0" max="100" step="1" value="18" />
+          </div>
+          <div class="range-row">
+            <label for="physicsNodeOverlap">Overlap force <span id="physicsNodeOverlapValue"></span></label>
+            <input id="physicsNodeOverlap" type="range" min="0" max="80" step="1" value="12" />
+          </div>
+          <div class="range-row">
+            <label for="physicsIterations">Iterations <span id="physicsIterationsValue"></span></label>
+            <input id="physicsIterations" type="range" min="100" max="3000" step="100" value="1400" />
+          </div>
+          <div class="range-row">
+            <label for="physicsCoolingFactor">Cooling <span id="physicsCoolingFactorValue"></span></label>
+            <input id="physicsCoolingFactor" type="range" min="75" max="99" step="1" value="95" />
+          </div>
+          <label class="toggle-row" for="physicsAnimate">
+            <input id="physicsAnimate" type="checkbox" checked />
+            <span>Animate simulation</span>
+          </label>
+          <label class="toggle-row" for="physicsLive">
+            <input id="physicsLive" type="checkbox" checked />
+            <span>Live physics loop</span>
+          </label>
+          <div class="button-row">
+            <button id="physicsRunButton" class="primary">Apply physics</button>
+            <button id="physicsResetButton">Reset</button>
+          </div>
+        </details>
+
+        <details class="panel-section">
+          <summary><h2>Advanced pivots</h2></summary>
+          <label for="pivotTarget">Target</label>
+          <select id="pivotTarget">
+            <option value="node">selected node</option>
+            <option value="edge">selected edge</option>
+          </select>
+          <label for="pivotField">Field</label>
+          <select id="pivotField"></select>
+          <label for="pivotValue">Value</label>
+          <input id="pivotValue" type="text" />
+          <label for="pivotLimit">Limit</label>
+          <input id="pivotLimit" type="number" min="1" max="2000" value="300" />
+          <button id="pivotButton" class="primary full">Pivot</button>
+        </details>
+
+        <details class="panel-section">
+          <summary><h2>Legacy aggregation</h2></summary>
+          <label for="aggregateTarget">Target</label>
+          <select id="aggregateTarget">
+            <option value="edge">edge property</option>
+            <option value="node">node property</option>
+            <option value="relationship">relationship type</option>
+          </select>
+          <label for="aggregateField">Group field</label>
+          <select id="aggregateField"></select>
+          <label for="metricField">Metric</label>
+          <select id="metricField"></select>
+          <button id="aggregateButton" class="full">Run aggregation</button>
+        </details>
+      </aside>
+    </main>
+
+    <script src="/vendor/cytoscape/cytoscape.min.js"></script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

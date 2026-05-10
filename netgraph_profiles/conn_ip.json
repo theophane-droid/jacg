@@ -1,0 +1,75 @@
+{
+  "name": "conn_ip",
+  "graph": {
+    "import_label": "ConnGraph",
+    "entity_node_label": "Entity",
+    "source_node_label": "",
+    "destination_node_label": "",
+    "source_caption_fields": [
+      "id.orig_h"
+    ],
+    "destination_caption_fields": [
+      "id.resp_h"
+    ],
+    "edge_caption_fields": [
+      "id.resp_p",
+      "count"
+    ],
+    "source_fields": [
+      "id.orig_h"
+    ],
+    "destination_fields": [
+      "id.resp_h"
+    ],
+    "source_node_key_fields": [
+      "id.orig_h"
+    ],
+    "destination_node_key_fields": [
+      "id.resp_h"
+    ],
+    "relationship_type": "",
+    "edge_mode": "event",
+    "edge_property_fields": [
+      "uid",
+      "ts",
+      "proto",
+      "service",
+      "id.orig_p",
+      "id.resp_p",
+      "conn_state",
+      "history"
+    ],
+    "timestamp_field": "ts",
+    "event_id_fields": [
+      "uid",
+      "_path",
+      "ts"
+    ],
+    "include_all_event_properties": false,
+    "include_raw_json": false,
+    "aggregations": [],
+    "event_node_label": "ConnEvent",
+    "source_event_relationship_type": "SRC_OF",
+    "event_destination_relationship_type": "DST_TO",
+    "event_property_fields": [
+      "uid",
+      "ts",
+      "proto",
+      "service",
+      "id.orig_p",
+      "id.resp_p",
+      "conn_state",
+      "history"
+    ],
+    "event_caption_fields": [
+      "ts",
+      "proto",
+      "service",
+      "id.resp_p"
+    ],
+    "timestamp_enabled": true,
+    "timestamp_format": "epoch_float",
+    "timestamp_python_format": "",
+    "timestamp_timezone": "UTC"
+  }
+}

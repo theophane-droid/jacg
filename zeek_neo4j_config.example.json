@@ -1,0 +1,76 @@
+{
+  "neo4j": {
+    "uri": "bolt://localhost:7687",
+    "username": "neo4j",
+    "password": "change-me-strong-password",
+    "database": "neo4j",
+    "create_database": false
+  },
+  "input": {
+    "paths": [
+      "zeek/logs/conn.jsonl"
+    ],
+    "sample_size": 50,
+    "batch_size": 500
+  },
+  "graph": {
+    "import_label": "ZeekConnImport",
+    "entity_node_label": "Entity",
+    "source_node_label": "IP",
+    "destination_node_label": "IP",
+    "event_node_label": "ConnEvent",
+    "source_caption_fields": [
+      "id.orig_h"
+    ],
+    "destination_caption_fields": [
+      "id.resp_h"
+    ],
+    "event_caption_fields": [
+      "ts",
+      "proto",
+      "service",
+      "id.resp_p"
+    ],
+    "source_fields": [
+      "id.orig_h"
+    ],
+    "destination_fields": [
+      "id.resp_h"
+    ],
+    "source_node_key_fields": [
+      "id.orig_h"
+    ],
+    "destination_node_key_fields": [
+      "id.resp_h"
+    ],
+    "source_event_relationship_type": "SRC_OF",
+    "event_destination_relationship_type": "DST_TO",
+    "edge_mode": "event",
+    "event_property_fields": [
+      "uid",
+      "ts",
+      "proto",
+      "service",
+      "id.orig_p",
+      "id.resp_p",
+      "conn_state",
+      "history",
+      "duration",
+      "orig_bytes",
+      "resp_bytes"
+    ],
+    "timestamp_enabled": true,
+    "timestamp_field": "ts",
+    "timestamp_format": "epoch_float",
+    "timestamp_python_format": "",
+    "timestamp_timezone": "UTC",
+    "event_id_fields": [
+      "uid",
+      "_path",
+      "ts"
+    ],
+    "include_all_event_properties": false,
+    "include_raw_json": false,
+    "aggregations": []
+  }
+}

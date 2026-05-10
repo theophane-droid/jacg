@@ -1,0 +1,92 @@
+{
+  "name": "ntlm_user_server",
+  "graph": {
+    "import_label": "NTLMGraph",
+    "entity_node_label": "Entity",
+    "source_node_label": "",
+    "destination_node_label": "",
+    "source_caption_fields": [
+      "username",
+      "hostname"
+    ],
+    "destination_caption_fields": [
+      "id.resp_h"
+    ],
+    "edge_caption_fields": [
+      "success",
+      "status",
+      "count"
+    ],
+    "source_fields": [
+      "username",
+      "hostname"
+    ],
+    "destination_fields": [
+      "id.resp_h"
+    ],
+    "source_node_key_fields": [
+      "username",
+      "hostname"
+    ],
+    "destination_node_key_fields": [
+      "id.resp_h"
+    ],
+    "relationship_type": "",
+    "edge_mode": "event",
+    "edge_property_fields": [
+      "uid",
+      "ts",
+      "@stream",
+      "username",
+      "hostname",
+      "domainname",
+      "id.orig_h",
+      "id.orig_p",
+      "id.resp_h",
+      "id.resp_p",
+      "server_nb_computer_name",
+      "server_dns_computer_name",
+      "success",
+      "status",
+      "status_code"
+    ],
+    "timestamp_field": "ts",
+    "event_id_fields": [
+      "uid",
+      "_path",
+      "ts"
+    ],
+    "include_all_event_properties": false,
+    "include_raw_json": false,
+    "aggregations": [],
+    "event_node_label": "HttpEvent",
+    "source_event_relationship_type": "SRC_OF",
+    "event_destination_relationship_type": "DST_TO",
+    "event_property_fields": [
+      "uid",
+      "ts",
+      "@stream",
+      "username",
+      "hostname",
+      "domainname",
+      "id.orig_h",
+      "id.orig_p",
+      "id.resp_h",
+      "id.resp_p",
+      "server_nb_computer_name",
+      "server_dns_computer_name",
+      "success",
+      "status",
+      "status_code"
+    ],
+    "event_caption_fields": [
+      "ts",
+      "id.resp_p",
+      "uid"
+    ],
+    "timestamp_enabled": true,
+    "timestamp_format": "epoch_float",
+    "timestamp_python_format": "",
+    "timestamp_timezone": "UTC"
+  }
+}
