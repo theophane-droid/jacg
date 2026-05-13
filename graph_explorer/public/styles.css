@@ -426,6 +426,29 @@ details:not([open]) summary::before {
   height: 100%;
 }
 
+.graph-notice {
+  position: absolute;
+  z-index: 4;
+  top: 12px;
+  left: 50%;
+  max-width: min(560px, calc(100% - 24px));
+  padding: 7px 10px;
+  transform: translateX(-50%);
+  background: rgba(13, 17, 23, 0.9);
+  border: 1px solid rgba(244, 162, 97, 0.45);
+  border-radius: 4px;
+  color: #f2cc8f;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+
+.graph-notice.hidden {
+  display: none;
+}
+
 #selectionBar {
   position: absolute;
   z-index: 3;

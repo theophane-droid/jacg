@@ -18,13 +18,17 @@ def list_profiles(profile_dir: Path = PROFILE_DIR) -> list[Path]:
 
 def load_profile(path: Path) -> dict[str, Any]:
     data = json.loads(path.read_text(encoding="utf-8"))
+    profile_name = data.get("name") or path.stem
 
     if "graph" in data:
         graph = data["graph"]
     else:
         graph = data
 
-    return {"graph": migrate_graph_profile(graph)}
+    graph = migrate_graph_profile(graph)
+    graph["profile_name"] = profile_name
+
+    return {"graph": graph}
 
 
 def save_profile(name: str, config: dict[str, Any], profile_dir: Path = PROFILE_DIR) -> Path:

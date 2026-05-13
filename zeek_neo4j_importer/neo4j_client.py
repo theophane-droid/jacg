@@ -118,12 +118,24 @@ def write_batch(tx: Any, rows: list[dict[str, Any]], labels: dict[str, str], con
 
             MERGE (s)-[sr:`{src_event_rel}` {{event_id: row.event_id}}]->(e)
             SET sr.import_label = row.import_label,
+                sr.profile_name = row.profile_name,
+                sr.profile_names = CASE
+                    WHEN row.profile_name IS NULL THEN coalesce(sr.profile_names, CASE WHEN sr.profile_name IS NULL THEN [] ELSE [sr.profile_name] END)
+                    WHEN row.profile_name IN coalesce(sr.profile_names, CASE WHEN sr.profile_name IS NULL THEN [] ELSE [sr.profile_name] END) THEN coalesce(sr.profile_names, CASE WHEN sr.profile_name IS NULL THEN [] ELSE [sr.profile_name] END)
+                    ELSE coalesce(sr.profile_names, CASE WHEN sr.profile_name IS NULL THEN [] ELSE [sr.profile_name] END) + row.profile_name
+                END,
                 sr.name = '{src_event_rel}',
                 sr.display = '{src_event_rel}',
                 sr.caption = '{src_event_rel}'
 
             MERGE (e)-[dr:`{event_dst_rel}` {{event_id: row.event_id}}]->(d)
             SET dr.import_label = row.import_label,
+                dr.profile_name = row.profile_name,
+                dr.profile_names = CASE
+                    WHEN row.profile_name IS NULL THEN coalesce(dr.profile_names, CASE WHEN dr.profile_name IS NULL THEN [] ELSE [dr.profile_name] END)
+                    WHEN row.profile_name IN coalesce(dr.profile_names, CASE WHEN dr.profile_name IS NULL THEN [] ELSE [dr.profile_name] END) THEN coalesce(dr.profile_names, CASE WHEN dr.profile_name IS NULL THEN [] ELSE [dr.profile_name] END)
+                    ELSE coalesce(dr.profile_names, CASE WHEN dr.profile_name IS NULL THEN [] ELSE [dr.profile_name] END) + row.profile_name
+                END,
                 dr.name = '{event_dst_rel}',
                 dr.display = '{event_dst_rel}',
                 dr.caption = '{event_dst_rel}'
@@ -166,6 +178,12 @@ def write_batch(tx: Any, rows: list[dict[str, Any]], labels: dict[str, str], con
         ON CREATE SET r.first_seen = row.ts_iso
         SET r += row.edge_props,
             r.import_label = row.import_label,
+            r.profile_name = row.profile_name,
+            r.profile_names = CASE
+                WHEN row.profile_name IS NULL THEN coalesce(r.profile_names, CASE WHEN r.profile_name IS NULL THEN [] ELSE [r.profile_name] END)
+                WHEN row.profile_name IN coalesce(r.profile_names, CASE WHEN r.profile_name IS NULL THEN [] ELSE [r.profile_name] END) THEN coalesce(r.profile_names, CASE WHEN r.profile_name IS NULL THEN [] ELSE [r.profile_name] END)
+                ELSE coalesce(r.profile_names, CASE WHEN r.profile_name IS NULL THEN [] ELSE [r.profile_name] END) + row.profile_name
+            END,
             r.source_fields = row.src_fields,
             r.destination_fields = row.dst_fields,
             r.source_key_fields = row.src_key_fields,
@@ -203,6 +221,7 @@ def import_records(config: dict[str, Any], dry_run: bool = False) -> int:
                 {
                     "labels": labels,
                     "entity_label": labels["entity"],
+                    "profile_name": config["graph"].get("profile_name") or config["graph"].get("import_label"),
                     "source_fields": config["graph"]["source_fields"],
                     "destination_fields": config["graph"]["destination_fields"],
                     "source_node_key_fields": config["graph"].get("source_node_key_fields") or config["graph"]["source_fields"],

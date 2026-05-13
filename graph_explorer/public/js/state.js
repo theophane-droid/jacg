@@ -28,6 +28,6 @@ export const state = {
     iterations: 2500,
     coolingFactor: 99,
     animate: true,
-    live: true
+    live: false
   }
 };

@@ -134,6 +134,7 @@ def aggregation_values(record: dict[str, Any], aggregations: list[dict[str, str]
 
 def build_row(record: dict[str, Any], config: dict[str, Any], path: Path, line_no: int) -> dict[str, Any] | None:
     graph = config["graph"]
+    profile_name = graph.get("profile_name") or graph.get("import_label")
     source_key_fields = graph.get("source_node_key_fields") or graph.get("source_merge_fields") or graph["source_fields"]
     destination_key_fields = graph.get("destination_node_key_fields") or graph.get("destination_merge_fields") or graph["destination_fields"]
 
@@ -200,6 +201,7 @@ def build_row(record: dict[str, Any], config: dict[str, Any], path: Path, line_n
         "agg_values": agg_values,
         "ts_iso": event_props.get("ts_iso"),
         "import_label": graph["import_label"],
+        "profile_name": profile_name,
     }
 
 

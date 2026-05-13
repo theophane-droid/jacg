@@ -6,7 +6,6 @@
     "source_node_label": "",
     "destination_node_label": "",
     "source_caption_fields": [
-      "id_orig_h",
       "client"
     ],
     "destination_caption_fields": [
@@ -17,14 +16,12 @@
       "count"
     ],
     "source_fields": [
-      "id_orig_h",
       "client"
     ],
     "destination_fields": [
       "service"
     ],
     "source_node_key_fields": [
-      "id_orig_h",
       "client"
     ],
     "destination_node_key_fields": [

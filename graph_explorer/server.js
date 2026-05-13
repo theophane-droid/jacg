@@ -47,6 +47,35 @@ const presets = [
     name: "Events with destination ports IN list",
     cypher: "MATCH p=(src)-[:SRC_OF]->(e)-[:DST_TO]->(dst) WHERE toIntegerOrNull(e.id_resp_p) IN $ports RETURN p ORDER BY e.ts_datetime DESC LIMIT $limit",
     params: { ports: [80, 443, 8080, 8443], limit: 200 }
+  },
+  {
+    id: "clients_with_neighbor_range",
+    name: "Clients with X-Y destinations",
+    cypher: `MATCH (client:Entity)-[:SRC_OF]->(e)-[:DST_TO]->(server:Entity)
+WITH client, count(DISTINCT server) AS neighbor_count
+WHERE neighbor_count >= $min_neighbors AND neighbor_count <= $max_neighbors
+MATCH (client)-[:SRC_OF]->(e)-[:DST_TO]->(server:Entity)
+WITH client, server, neighbor_count, count(e) AS event_count,
+     sum(coalesce(toFloat(e.orig_bytes), 0) + coalesce(toFloat(e.resp_bytes), 0)) AS total_bytes,
+     sum(coalesce(toFloat(e.orig_bytes), 0)) AS source_bytes,
+     sum(coalesce(toFloat(e.resp_bytes), 0)) AS destination_bytes,
+     min(e.ts_datetime) AS first_seen,
+     max(e.ts_datetime) AS last_seen
+RETURN
+  coalesce(client.caption, client.display, client.value, elementId(client)) AS source,
+  coalesce(server.caption, server.display, server.value, elementId(server)) AS target,
+  labels(client)[0] AS source_label,
+  labels(server)[0] AS target_label,
+  neighbor_count,
+  event_count,
+  total_bytes,
+  source_bytes,
+  destination_bytes,
+  first_seen,
+  last_seen
+ORDER BY neighbor_count DESC, event_count DESC, total_bytes DESC
+LIMIT $limit`,
+    params: { min_neighbors: 5, max_neighbors: 20, limit: 500 }
   }
 ];
 
@@ -428,6 +457,70 @@ function extractGraph(value, nodes, edges) {
   }
 }
 
+function fieldFromRow(row, names) {
+  for (const name of names) {
+    const value = row[name];
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+  return "";
+}
+
+function virtualGraphFromRows(rows) {
+  const nodes = new Map();
+  const edges = [];
+  const candidates = rows.filter((row) =>
+    fieldFromRow(row, ["source", "src", "client"]) &&
+    fieldFromRow(row, ["target", "destination", "dst", "server"])
+  );
+  const maxEvents = candidates.reduce((max, row) => Math.max(max, Number(row.event_count || row.events || row.count || 0)), 1);
+
+  for (const row of candidates) {
+    const source = String(fieldFromRow(row, ["source", "src", "client"]));
+    const target = String(fieldFromRow(row, ["target", "destination", "dst", "server"]));
+    const sourceLabel = String(row.source_label || row.src_label || "Entity");
+    const targetLabel = String(row.target_label || row.destination_label || row.dst_label || "Entity");
+    const sourceId = cyNodeId(sourceLabel, source);
+    const targetId = cyNodeId(targetLabel, target);
+    const eventCount = Number(row.event_count || row.events || row.count || 0);
+    const totalBytes = Number(row.total_bytes || row.bytes || 0);
+    const labelParts = eventCount ? [`${eventCount} events`] : ["aggregate"];
+    if (totalBytes) labelParts.push(bytesLabel(totalBytes));
+
+    if (!nodes.has(sourceId)) nodes.set(sourceId, mapEntityNode(sourceLabel, source, "source", { properties: { value: source, role: "source", ...row } }));
+    if (!nodes.has(targetId)) nodes.set(targetId, mapEntityNode(targetLabel, target, "destination", { properties: { value: target, role: "destination", ...row } }));
+
+    edges.push({
+      data: {
+        id: `manual:${sourceId}->${targetId}:${edges.length}`,
+        source: sourceId,
+        target: targetId,
+        label: labelParts.join(" / "),
+        caption: labelParts.join(" / "),
+        type: "MANUAL_AGGREGATE",
+        isVirtual: true,
+        event_count: eventCount,
+        total_bytes: totalBytes,
+        source_bytes: row.source_bytes || 0,
+        destination_bytes: row.destination_bytes || 0,
+        neighbor_count: row.neighbor_count || row.client_count || row.server_count || 0,
+        first_seen: serializeDateTime(row.first_seen || null),
+        last_seen: serializeDateTime(row.last_seen || null),
+        widthMetric: "event_count",
+        widthMetricValue: eventCount,
+        width: virtualWidth(eventCount, maxEvents),
+        source_value: source,
+        destination_value: target,
+        source_label: sourceLabel,
+        target_label: targetLabel,
+        properties: row
+      },
+      classes: "virtual communication manual-aggregate"
+    });
+  }
+
+  return { nodes: [...nodes.values()], edges };
+}
+
 function recordToObject(record) {
   const row = {};
   for (const key of record.keys) {
@@ -708,18 +801,19 @@ app.post("/api/query", async (req, res) => {
         extractGraph(record.get(key), nodes, edges);
       }
     }
+    const rows = result.records.map(recordToObject);
+    const graph = nodes.size || edges.size
+      ? { nodes: [...nodes.values()], edges: [...edges.values()] }
+      : virtualGraphFromRows(rows);
     res.json({
-      graph: {
-        nodes: [...nodes.values()],
-        edges: [...edges.values()]
-      },
+      graph,
       table: {
         columns: result.records[0]?.keys || [],
-        rows: result.records.map(recordToObject)
+        rows
       },
       summary: {
-        nodes: nodes.size,
-        edges: edges.size,
+        nodes: graph.nodes.length,
+        edges: graph.edges.length,
         rows: result.records.length
       }
     });

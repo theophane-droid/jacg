@@ -13,7 +13,22 @@ function cloneGraph(graph) {
   };
 }
 
+function updatePhysicsNotice(nodeCount) {
+  const notice = el("physicsNotice");
+  if (!notice) return;
+
+  if (nodeCount > LIVE_PHYSICS_NODE_LIMIT) {
+    notice.textContent = `Large graph: live physics disabled above ${LIVE_PHYSICS_NODE_LIMIT} nodes. Static layout shown.`;
+    notice.classList.remove("hidden");
+    return;
+  }
+
+  notice.textContent = "";
+  notice.classList.add("hidden");
+}
+
 export function renderGraph(graph, { pushHistory = true } = {}) {
+  const nodeCount = graph.nodes?.length || 0;
   if (pushHistory && state.lastGraph?.nodes?.length) {
     state.graphHistory.push(cloneGraph(state.lastGraph));
     if (state.graphHistory.length > 30) state.graphHistory.shift();
@@ -27,8 +42,12 @@ export function renderGraph(graph, { pushHistory = true } = {}) {
   updateControlsFromGraph(graph);
   applyCaptions();
   runLayout();
-  if ((graph.nodes?.length || 0) > LIVE_PHYSICS_NODE_LIMIT) {
-    log(`Live physics skipped for ${graph.nodes.length} nodes; using a static scalable layout.`, "ok");
+  updatePhysicsNotice(nodeCount);
+  if (nodeCount > LIVE_PHYSICS_NODE_LIMIT) {
+    log(
+      `Large graph: live physics is disabled above ${LIVE_PHYSICS_NODE_LIMIT} nodes. Showing ${nodeCount} nodes with a static layout.`,
+      "warn"
+    );
   }
 }
 

@@ -3,6 +3,66 @@ import { el } from "./dom.js";
 
 export const LIVE_PHYSICS_NODE_LIMIT = 350;
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+export function reasonableGraphBounds(nodeCount = state.cy?.nodes().length || 0) {
+  const width = Math.max(1, state.cy?.width() || 1);
+  const height = Math.max(1, state.cy?.height() || 1);
+  const idealLen = Number(state.defaultPhysics.idealEdgeLength || 115);
+  const densityRadius = Math.sqrt(Math.max(1, nodeCount)) * idealLen * 0.55;
+  const maxHalf = Math.max(width, height) * 2.8;
+
+  const halfW = clamp(width * 0.55 + densityRadius, width * 0.65, maxHalf);
+  const halfH = clamp(height * 0.55 + densityRadius, height * 0.65, maxHalf);
+  const cx = width / 2;
+  const cy = height / 2;
+
+  return {
+    cx,
+    cy,
+    minX: cx - halfW,
+    maxX: cx + halfW,
+    minY: cy - halfH,
+    maxY: cy + halfH
+  };
+}
+
+export function compactGraphPositions(padding = 24) {
+  if (!state.cy || state.cy.nodes().empty()) return;
+
+  const nodes = state.cy.nodes().toArray();
+  const bounds = reasonableGraphBounds(nodes.length);
+  const allowedW = Math.max(1, bounds.maxX - bounds.minX - padding * 2);
+  const allowedH = Math.max(1, bounds.maxY - bounds.minY - padding * 2);
+  const box = nodes.reduce((acc, node) => {
+    const p = node.position();
+    return {
+      minX: Math.min(acc.minX, p.x),
+      maxX: Math.max(acc.maxX, p.x),
+      minY: Math.min(acc.minY, p.y),
+      maxY: Math.max(acc.maxY, p.y)
+    };
+  }, { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
+
+  const graphW = Math.max(1, box.maxX - box.minX);
+  const graphH = Math.max(1, box.maxY - box.minY);
+  const scale = Math.min(1, allowedW / graphW, allowedH / graphH);
+  const graphCx = (box.minX + box.maxX) / 2;
+  const graphCy = (box.minY + box.maxY) / 2;
+
+  state.cy.startBatch();
+  for (const node of nodes) {
+    const p = node.position();
+    node.position({
+      x: clamp(bounds.cx + (p.x - graphCx) * scale, bounds.minX + padding, bounds.maxX - padding),
+      y: clamp(bounds.cy + (p.y - graphCy) * scale, bounds.minY + padding, bounds.maxY - padding)
+    });
+  }
+  state.cy.endBatch();
+}
+
 export const sim = {
   alpha: 0,
   alphaDecay: 0.014,
@@ -17,6 +77,7 @@ export const sim = {
   gravityStrength: 0.04,
   tickCount: 0,
   maxTicks: 900,
+  maxVelocity: 18,
 
   heat(value = 0.45) {
     if (!this.canRun()) return;
@@ -67,6 +128,8 @@ export const sim = {
     const cy = state.cy.height() / 2;
     const idealLen = state.defaultPhysics.idealEdgeLength;
     const a = this.alpha;
+    const bounds = reasonableGraphBounds(nodeArray.length);
+    const boundaryStrength = 0.16;
 
     for (const n of nodeArray) {
       const id = n.id();
@@ -113,6 +176,11 @@ export const sim = {
       const p = n.position();
       this.vx[id] += (cx - p.x) * this.gravityStrength * a;
       this.vy[id] += (cy - p.y) * this.gravityStrength * a;
+
+      if (p.x < bounds.minX) this.vx[id] += (bounds.minX - p.x) * boundaryStrength * a;
+      if (p.x > bounds.maxX) this.vx[id] -= (p.x - bounds.maxX) * boundaryStrength * a;
+      if (p.y < bounds.minY) this.vy[id] += (bounds.minY - p.y) * boundaryStrength * a;
+      if (p.y > bounds.maxY) this.vy[id] -= (p.y - bounds.maxY) * boundaryStrength * a;
     }
 
     state.cy.startBatch();
@@ -121,8 +189,14 @@ export const sim = {
       const id = n.id();
       this.vx[id] *= this.velocityDecay;
       this.vy[id] *= this.velocityDecay;
+      this.vx[id] = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, this.vx[id]));
+      this.vy[id] = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, this.vy[id]));
       const p = n.position();
-      n.position({ x: p.x + this.vx[id], y: p.y + this.vy[id] });
+      const nextX = clamp(p.x + this.vx[id], bounds.minX, bounds.maxX);
+      const nextY = clamp(p.y + this.vy[id], bounds.minY, bounds.maxY);
+      if (nextX === bounds.minX || nextX === bounds.maxX) this.vx[id] *= -0.2;
+      if (nextY === bounds.minY || nextY === bounds.maxY) this.vy[id] *= -0.2;
+      n.position({ x: nextX, y: nextY });
     }
     state.cy.endBatch();
   }

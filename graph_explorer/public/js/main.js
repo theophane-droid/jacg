@@ -108,7 +108,14 @@ async function init() {
     state.cy.zoom({ level: Math.max(state.cy.minZoom(), state.cy.zoom() / 1.22), renderedPosition: { x: state.cy.width() / 2, y: state.cy.height() / 2 } });
   });
   el("fitButton").addEventListener("click", () => state.cy.fit(undefined, 48));
-  el("clearButton").addEventListener("click", () => { sim.stop(); state.graphHistory = []; state.lastGraph = { nodes: [], edges: [] }; state.cy.elements().remove(); updateSelection(null); });
+  el("clearButton").addEventListener("click", () => {
+    sim.stop();
+    state.graphHistory = [];
+    state.lastGraph = { nodes: [], edges: [] };
+    state.cy.elements().remove();
+    el("physicsNotice")?.classList.add("hidden");
+    updateSelection(null);
+  });
   el("toggleQueryPanelButton").addEventListener("click", () => {
     document.body.classList.toggle("query-collapsed");
     window.setTimeout(() => state.cy.resize().fit(undefined, 48), 180);
