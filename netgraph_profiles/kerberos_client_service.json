@@ -6,6 +6,7 @@
     "source_node_label": "",
     "destination_node_label": "",
     "source_caption_fields": [
+      "id_orig_h",
       "client"
     ],
     "destination_caption_fields": [
@@ -16,12 +17,14 @@
       "count"
     ],
     "source_fields": [
+      "id_orig_h",
       "client"
     ],
     "destination_fields": [
       "service"
     ],
     "source_node_key_fields": [
+      "id_orig_h",
       "client"
     ],
     "destination_node_key_fields": [
@@ -30,6 +33,7 @@
     "relationship_type": "",
     "edge_mode": "event",
     "edge_property_fields": [
+      "id_orig_h",
       "client",
       "service",
       "success",
@@ -50,6 +54,7 @@
     "source_event_relationship_type": "SRC_OF",
     "event_destination_relationship_type": "DST_TO",
     "event_property_fields": [
+      "id_orig_h",
       "client",
       "service",
       "success",

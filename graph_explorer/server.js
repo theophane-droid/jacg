@@ -60,6 +60,8 @@ const graphConfig = {
   widthMetrics: [
     { id: "event_count", label: "event count" },
     { id: "total_bytes", label: "total bytes" },
+    { id: "source_bytes", label: "source bytes" },
+    { id: "destination_bytes", label: "destination bytes" },
     { id: "avg_bytes", label: "average bytes" },
     { id: "total_duration", label: "total duration" },
     { id: "avg_duration", label: "average duration" },
@@ -235,8 +237,34 @@ function eventBytesExpression(alias = "e") {
     toFloat(${alias}.bytes),
     toFloat(${alias}.byte_count),
     toFloat(${alias}.network_bytes),
-    toFloat(coalesce(${alias}.orig_bytes, 0)) + toFloat(coalesce(${alias}.resp_bytes, 0)),
-    toFloat(coalesce(${alias}.bytes_in, 0)) + toFloat(coalesce(${alias}.bytes_out, 0)),
+    CASE
+      WHEN ${alias}.orig_bytes IS NULL AND ${alias}.resp_bytes IS NULL
+      THEN NULL
+      ELSE toFloat(coalesce(${alias}.orig_bytes, 0)) + toFloat(coalesce(${alias}.resp_bytes, 0))
+    END,
+    CASE
+      WHEN ${alias}.bytes_in IS NULL AND ${alias}.bytes_out IS NULL
+      THEN NULL
+      ELSE toFloat(coalesce(${alias}.bytes_in, 0)) + toFloat(coalesce(${alias}.bytes_out, 0))
+    END,
+    0
+  )`;
+}
+
+function eventSourceBytesExpression(alias = "e") {
+  return `coalesce(
+    toFloat(${alias}.source_bytes),
+    toFloat(${alias}.orig_bytes),
+    toFloat(${alias}.bytes_out),
+    0
+  )`;
+}
+
+function eventDestinationBytesExpression(alias = "e") {
+  return `coalesce(
+    toFloat(${alias}.destination_bytes),
+    toFloat(${alias}.resp_bytes),
+    toFloat(${alias}.bytes_in),
     0
   )`;
 }
@@ -320,8 +348,12 @@ function widthMetric(metric) {
   return graphConfig.widthMetrics.some((item) => item.id === metric) ? metric : "event_count";
 }
 
+function selectEntityLabel(rows = []) {
+  return rows.find((row) => row.label === "Entity")?.label || rows[0]?.label || "__any";
+}
+
 function selectEventLabel(labels = []) {
-  return labels.find((label) => /Event$/i.test(label)) || labels[0] || "Event";
+  return labels.find((label) => /Event$/i.test(label)) || labels[0] || "__any";
 }
 
 function serializeDateTime(value) {
@@ -778,11 +810,15 @@ async function discoverGraphShape() {
     { id: "hour", label: "Source → Destination + hour bucket", groupFields: ["source", "target", "hour"] }
   ];
 
+  const entityRows = entityLabels.records.map(recordToObject);
+  const eventRows = eventLabels.records.map(recordToObject);
+  const eventLabelValues = eventRows.map((row) => row.label).filter(Boolean);
+
   return {
-    entityLabel: process.env.GRAPH_ENTITY_LABEL || "__any",
-    eventLabel: process.env.GRAPH_EVENT_LABEL || "__any",
-    entityLabels: entityLabels.records.map(recordToObject),
-    eventLabels: eventLabels.records.map(recordToObject),
+    entityLabel: process.env.GRAPH_ENTITY_LABEL || selectEntityLabel(entityRows),
+    eventLabel: process.env.GRAPH_EVENT_LABEL || selectEventLabel(eventLabelValues),
+    entityLabels: entityRows,
+    eventLabels: eventRows,
     eventFields: fields,
     aggregateModes,
     timeBounds: bounds.records[0] ? recordToObject(bounds.records[0]) : null,
@@ -806,6 +842,8 @@ app.get("/api/graph/aggregate", async (req, res) => {
     eventFilters(req.query, params, clauses);
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const bytesExpr = eventBytesExpression("e");
+    const sourceBytesExpr = eventSourceBytesExpression("e");
+    const destinationBytesExpr = eventDestinationBytesExpression("e");
     const durationExpr = eventDurationExpression("e");
 
     let groupExpr = "null";
@@ -837,6 +875,8 @@ app.get("/api/graph/aggregate", async (req, res) => {
            ${groupExpr} AS group_value,
            count(e) AS event_count,
            sum(${bytesExpr}) AS total_bytes,
+           sum(${sourceBytesExpr}) AS source_bytes,
+           sum(${destinationBytesExpr}) AS destination_bytes,
            avg(${bytesExpr}) AS avg_bytes,
            sum(${durationExpr}) AS total_duration,
            avg(${durationExpr}) AS avg_duration,
@@ -856,7 +896,7 @@ app.get("/api/graph/aggregate", async (req, res) => {
            max(e.ts_datetime) AS last_seen
       RETURN source, target, source_label, target_label, source_element_id, target_element_id,
              source_note, target_note, source_color, target_color, group_value, event_count, total_bytes, total_duration,
-             avg_bytes, avg_duration, bytes_per_second, unique_services, unique_ports, services, protos, destination_ports,
+             source_bytes, destination_bytes, avg_bytes, avg_duration, bytes_per_second, unique_services, unique_ports, services, protos, destination_ports,
              event_colors, event_tags, first_seen, last_seen
       ORDER BY ${metric} DESC
       LIMIT $limit
@@ -896,6 +936,7 @@ app.get("/api/graph/aggregate", async (req, res) => {
           type: "VIRTUAL_COMMUNICATION", isVirtual: true, aggregate_mode: modeId, aggregate_value: row.group_value,
           widthMetric: metric, widthMetricValue: row[metric], width: virtualWidth(row[metric], maxValue),
           event_count: row.event_count, total_bytes: row.total_bytes, avg_bytes: row.avg_bytes,
+          source_bytes: row.source_bytes, destination_bytes: row.destination_bytes,
           total_duration: row.total_duration, avg_duration: row.avg_duration, bytes_per_second: row.bytes_per_second,
           unique_services: row.unique_services, unique_ports: row.unique_ports,
           services: row.services || [], protos: row.protos || [], destination_ports: row.destination_ports || [],
@@ -1300,12 +1341,98 @@ app.get("/api/graph/node/:nodeId/neighbors", async (req, res) => {
     eventFilters(req.query, params, baseClauses);
     const outClauses = ["toString(coalesce(src.value, src.name, src.display, elementId(src))) = $value", ...baseClauses];
     const inClauses = ["toString(coalesce(dst.value, dst.name, dst.display, elementId(dst))) = $value", ...baseClauses];
-    const out = `MATCH (${srcPattern})-[:SRC_OF]->(${eventPattern})-[:DST_TO]->(${dstPattern}) WHERE ${outClauses.join(" AND ")} RETURN src, e, dst`;
-    const inc = `MATCH (${srcPattern})-[:SRC_OF]->(${eventPattern})-[:DST_TO]->(${dstPattern}) WHERE ${inClauses.join(" AND ")} RETURN src, e, dst`;
-    const cypher = direction === "outbound" ? `${out} ORDER BY e.ts_datetime DESC LIMIT $limit` : direction === "inbound" ? `${inc} ORDER BY e.ts_datetime DESC LIMIT $limit` : `${out} UNION ${inc} ORDER BY e.ts_datetime DESC LIMIT $limit`;
+    const bytesExpr = eventBytesExpression("e");
+    const sourceBytesExpr = eventSourceBytesExpression("e");
+    const destinationBytesExpr = eventDestinationBytesExpression("e");
+    const durationExpr = eventDurationExpression("e");
+    const aggregateReturn = (directionLabel) => `
+      WITH src, dst, e, ${bytesExpr} AS bytes, ${sourceBytesExpr} AS source_bytes, ${destinationBytesExpr} AS destination_bytes, ${durationExpr} AS duration
+      RETURN coalesce(src.value, src.name, src.display, elementId(src)) AS source,
+             coalesce(dst.value, dst.name, dst.display, elementId(dst)) AS target,
+             labels(src)[0] AS source_label,
+             labels(dst)[0] AS target_label,
+             elementId(src) AS source_element_id,
+             elementId(dst) AS target_element_id,
+             src.${GRAPH_NOTE_PROPERTY} AS source_note,
+             dst.${GRAPH_NOTE_PROPERTY} AS target_note,
+             src.${GRAPH_COLOR_PROPERTY} AS source_color,
+             dst.${GRAPH_COLOR_PROPERTY} AS target_color,
+             '${directionLabel}' AS direction,
+             count(e) AS event_count,
+             sum(bytes) AS total_bytes,
+             sum(source_bytes) AS source_bytes,
+             sum(destination_bytes) AS destination_bytes,
+             avg(bytes) AS avg_bytes,
+             sum(duration) AS total_duration,
+             avg(duration) AS avg_duration,
+             CASE WHEN sum(duration) > 0 THEN sum(bytes) / sum(duration) ELSE 0 END AS bytes_per_second,
+             count(DISTINCT e.service) AS unique_services,
+             count(DISTINCT e.id_resp_p) AS unique_ports,
+             collect(DISTINCT e.service)[0..8] AS services,
+             collect(DISTINCT e.proto)[0..8] AS protos,
+             collect(DISTINCT e.id_resp_p)[0..8] AS destination_ports,
+             collect(DISTINCT e.${GRAPH_COLOR_PROPERTY})[0..8] AS event_colors,
+             reduce(tags = [], tag_list IN collect(e.${GRAPH_TAGS_PROPERTY}) | tags + coalesce(tag_list, [])) AS event_tags,
+             min(e.ts_datetime) AS first_seen,
+             max(e.ts_datetime) AS last_seen
+    `;
+    const out = `MATCH (${srcPattern})-[:SRC_OF]->(${eventPattern})-[:DST_TO]->(${dstPattern}) WHERE ${outClauses.join(" AND ")} ${aggregateReturn("outbound")}`;
+    const inc = `MATCH (${srcPattern})-[:SRC_OF]->(${eventPattern})-[:DST_TO]->(${dstPattern}) WHERE ${inClauses.join(" AND ")} ${aggregateReturn("inbound")}`;
+    const body = direction === "outbound" ? out : direction === "inbound" ? inc : `${out} UNION ALL ${inc}`;
+    const cypher = `
+      CALL {
+        ${body}
+      }
+      RETURN *
+      ORDER BY event_count DESC, total_bytes DESC
+      LIMIT $limit
+    `;
     const result = await readQuery(cypher, params);
-    const graph = await applyGraphAnnotations(eventRowsToDetailedGraph(result.records));
-    res.json({ graph, table: { columns: result.records[0]?.keys || [], rows: result.records.map(recordToObject) }, summary: { nodes: graph.nodes.length, edges: graph.edges.length, rows: result.records.length } });
+    const rows = result.records.map(recordToObject);
+    const maxValue = rows.reduce((m, row) => Math.max(m, Number(row.event_count || 0)), 1);
+    const nodes = new Map();
+    const edges = [];
+    for (const row of rows) {
+      if (row.source === null || row.target === null) continue;
+      const sourceLabel = row.source_label || "Entity";
+      const targetLabel = row.target_label || sourceLabel;
+      const sourceId = cyNodeId(sourceLabel, row.source);
+      const targetId = cyNodeId(targetLabel, row.target);
+      if (!nodes.has(sourceId)) nodes.set(sourceId, mapEntityNode(sourceLabel, row.source, "source", {
+        elementId: row.source_element_id,
+        note: row.source_note,
+        color: row.source_color,
+        properties: { value: row.source, role: "source", [GRAPH_NOTE_PROPERTY]: row.source_note || "", [GRAPH_COLOR_PROPERTY]: row.source_color || "" }
+      }));
+      if (!nodes.has(targetId)) nodes.set(targetId, mapEntityNode(targetLabel, row.target, "destination", {
+        elementId: row.target_element_id,
+        note: row.target_note,
+        color: row.target_color,
+        properties: { value: row.target, role: "destination", [GRAPH_NOTE_PROPERTY]: row.target_note || "", [GRAPH_COLOR_PROPERTY]: row.target_color || "" }
+      }));
+      const eventColors = (row.event_colors || []).filter(Boolean);
+      const eventTags = normalizeTags(row.event_tags || []);
+      const labelParts = [`${row.event_count} events`, bytesLabel(row.total_bytes)];
+      const id = `virtual:${sourceId}->${targetId}:node:${row.direction}`;
+      edges.push({
+        data: {
+          id, source: sourceId, target: targetId, label: labelParts.join(" / "), caption: labelParts.join(" / "),
+          type: "VIRTUAL_COMMUNICATION", isVirtual: true, aggregate_mode: `node:${row.direction}`, aggregate_value: value,
+          direction: row.direction, widthMetric: "event_count", widthMetricValue: row.event_count, width: virtualWidth(row.event_count, maxValue),
+          event_count: row.event_count, total_bytes: row.total_bytes, source_bytes: row.source_bytes, destination_bytes: row.destination_bytes,
+          avg_bytes: row.avg_bytes, total_duration: row.total_duration, avg_duration: row.avg_duration, bytes_per_second: row.bytes_per_second,
+          unique_services: row.unique_services, unique_ports: row.unique_ports,
+          services: row.services || [], protos: row.protos || [], destination_ports: row.destination_ports || [],
+          event_colors: eventColors, tags: eventTags, customColor: eventColors[0] || "",
+          first_seen: serializeDateTime(row.first_seen), last_seen: serializeDateTime(row.last_seen),
+          source_value: String(row.source), destination_value: String(row.target), source_label: sourceLabel, target_label: targetLabel,
+          properties: { ...row, __graph_color: eventColors[0] || "", __graph_tags: eventTags }
+        },
+        classes: `virtual communication node-neighbor ${String(row.direction || "both")}`
+      });
+    }
+    const graph = await applyGraphAnnotations({ nodes: [...nodes.values()], edges });
+    res.json({ graph, table: { columns: result.records[0]?.keys || [], rows }, summary: { nodes: graph.nodes.length, edges: graph.edges.length, rows: rows.length } });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 

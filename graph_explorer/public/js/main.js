@@ -2,10 +2,10 @@ import { state } from "./state.js";
 import { el, log } from "./dom.js";
 import { api } from "./api.js";
 import { runLayout } from "./layout.js";
-import { appendDisplayField, applyCaptions, applyStyle } from "./style.js";
+import { appendDisplayField, applyCaptions, applyStyle, updateLabelVisibility } from "./style.js";
 import { resetPhysicsControls, sim, syncPhysicsLabels, syncSimParams } from "./simulation.js";
 import { loadSchema } from "./controls.js";
-import { runQuery, setPreset } from "./query.js";
+import { goBack, runQuery, setPreset } from "./query.js";
 import { updateSuggestions } from "./cypher.js";
 import { clearHighlight, highlightNeighborhood, runAggregation, runPivot, selectedData, updateSelection } from "./interactions.js";
 import { createContextMenu, hideContextMenu, showCanvasContextMenu, showContextMenu } from "./context-menu.js";
@@ -84,7 +84,7 @@ async function init() {
   });
   state.cy.on("mouseover", "node", (e) => highlightNeighborhood(e.target));
   state.cy.on("mouseout", "node", clearHighlight);
-  state.cy.on("zoom", () => applyStyle());
+  state.cy.on("zoom", updateLabelVisibility);
   state.cy.on("grab", "node", () => { if (el("physicsLive").checked) sim.heat(0.5); });
   state.cy.on("cxttap", "node, edge", (e) => {
     e.originalEvent?.preventDefault?.();
@@ -98,6 +98,7 @@ async function init() {
   el("cy").addEventListener("contextmenu", (e) => e.preventDefault());
 
   el("runButton").addEventListener("click", () => runQuery());
+  el("graphBackButton").addEventListener("click", goBack);
   el("schemaButton").addEventListener("click", () => loadSchema().then(() => log("Schema refreshed", "ok")));
   el("layoutButton").addEventListener("click", () => runLayout());
   el("zoomInButton").addEventListener("click", () => {
@@ -107,7 +108,7 @@ async function init() {
     state.cy.zoom({ level: Math.max(state.cy.minZoom(), state.cy.zoom() / 1.22), renderedPosition: { x: state.cy.width() / 2, y: state.cy.height() / 2 } });
   });
   el("fitButton").addEventListener("click", () => state.cy.fit(undefined, 48));
-  el("clearButton").addEventListener("click", () => { sim.stop(); state.cy.elements().remove(); updateSelection(null); });
+  el("clearButton").addEventListener("click", () => { sim.stop(); state.graphHistory = []; state.lastGraph = { nodes: [], edges: [] }; state.cy.elements().remove(); updateSelection(null); });
   el("toggleQueryPanelButton").addEventListener("click", () => {
     document.body.classList.toggle("query-collapsed");
     window.setTimeout(() => state.cy.resize().fit(undefined, 48), 180);

@@ -16,7 +16,7 @@ export function updateSelect(select, values, extra = []) {
 
 export function updateControlsFromGraph(graph) {
   const nodeFields = new Set(["label", "caption", "display", "name", "value", "__note", "__tags"]);
-  const edgeFields = new Set(["label", "caption", "display", "name", "type", "event_count", "total_bytes", "avg_bytes", "total_duration", "avg_duration", "bytes_per_second", "first_seen", "last_seen", "services", "destination_ports", "__note", "__tags"]);
+  const edgeFields = new Set(["label", "caption", "display", "name", "type", "event_count", "total_bytes", "source_bytes", "destination_bytes", "avg_bytes", "total_duration", "avg_duration", "bytes_per_second", "first_seen", "last_seen", "services", "destination_ports", "__note", "__tags"]);
   for (const node of graph.nodes) {
     for (const key of Object.keys(node.data || {})) nodeFields.add(key);
     for (const key of Object.keys(node.data.properties || {})) nodeFields.add(key);
@@ -41,7 +41,7 @@ export function updateControlsFromGraph(graph) {
 export async function loadSchema() {
   const schema = await api("/api/schema");
   state.schema = schema;
-  const allFields = [...new Set(["label", "caption", "display", "name", "value", "event_count", "total_bytes", "avg_bytes", "total_duration", "avg_duration", "bytes_per_second", "first_seen", "last_seen", "services", "destination_ports", "__note", "__tags", ...schema.propertyKeys])].sort();
+  const allFields = [...new Set(["label", "caption", "display", "name", "value", "event_count", "total_bytes", "source_bytes", "destination_bytes", "avg_bytes", "total_duration", "avg_duration", "bytes_per_second", "first_seen", "last_seen", "services", "destination_ports", "__note", "__tags", ...schema.propertyKeys])].sort();
   updateSelect(el("nodeLabelField"), allFields, [{ value: "__labels", label: "labels" }]);
   updateSelect(el("edgeLabelField"), allFields, [{ value: "__type", label: "type" }]);
   if (!el("nodeLabelFieldsInput").value.trim()) el("nodeLabelFieldsInput").value = "caption";

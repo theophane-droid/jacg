@@ -1,0 +1,82 @@
+{
+  "name": "dce_rpc",
+  "graph": {
+    "import_label": "ZeekImport",
+    "entity_node_label": "Entity",
+    "source_node_label": "src_id_orig_h",
+    "destination_node_label": "dst_endpoint",
+    "event_node_label": "Event",
+    "source_caption_fields": [],
+    "destination_caption_fields": [],
+    "event_caption_fields": [],
+    "source_fields": [
+      "id.orig_h"
+    ],
+    "destination_fields": [
+	"operation",
+      	"endpoint"
+    ],
+    "source_node_key_fields": [
+      "id.orig_h"
+    ],
+    "destination_node_key_fields": [
+	"operation",
+      "endpoint"
+    ],
+    "relationship_type": "",
+    "source_event_relationship_type": "SRC_OF",
+    "event_destination_relationship_type": "DST_TO",
+    "edge_mode": "event",
+    "event_property_fields": [
+      "uid",
+      "@stream",
+      "ts",
+      "proto",
+      "service",
+      "id.orig_p",
+      "id.resp_p",
+      "id_orig_p",
+      "id_resp_p",
+      "conn_state",
+      "history",
+      "duration",
+      "orig_bytes",
+      "resp_bytes",
+      "orig_pkts",
+      "resp_pkts",
+      "operation"
+    ],
+    "edge_property_fields": [
+      "uid",
+      "@stream",
+      "ts",
+      "proto",
+      "service",
+      "id.orig_p",
+      "id.resp_p",
+      "id_orig_p",
+      "id_resp_p",
+      "conn_state",
+      "history",
+      "duration",
+      "orig_bytes",
+      "resp_bytes",
+      "orig_pkts",
+      "resp_pkts",
+      "operation"
+    ],
+    "timestamp_enabled": true,
+    "timestamp_field": "ts",
+    "timestamp_format": "epoch_float",
+    "timestamp_python_format": "",
+    "timestamp_timezone": "UTC",
+    "event_id_fields": [
+      "uid",
+      "_path",
+      "ts"
+    ],
+    "include_all_event_properties": false,
+    "include_raw_json": false,
+    "aggregations": []
+  }
+}

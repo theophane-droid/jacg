@@ -1,23 +1,48 @@
 import { state } from "./state.js";
 import { el, log } from "./dom.js";
 import { api } from "./api.js";
-import { sim } from "./simulation.js";
+import { LIVE_PHYSICS_NODE_LIMIT, sim } from "./simulation.js";
 import { applyCaptions } from "./style.js";
 import { updateControlsFromGraph } from "./controls.js";
+import { runLayout } from "./layout.js";
 
-export function renderGraph(graph) {
+function cloneGraph(graph) {
+  return {
+    nodes: [...(graph.nodes || [])],
+    edges: [...(graph.edges || [])]
+  };
+}
+
+export function renderGraph(graph, { pushHistory = true } = {}) {
+  if (pushHistory && state.lastGraph?.nodes?.length) {
+    state.graphHistory.push(cloneGraph(state.lastGraph));
+    if (state.graphHistory.length > 30) state.graphHistory.shift();
+  }
   state.lastGraph = graph;
-  state.cy.elements().remove();
-  state.cy.add([...graph.nodes, ...graph.edges]);
+  sim.stop();
+  state.cy.batch(() => {
+    state.cy.elements().remove();
+    state.cy.add([...graph.nodes, ...graph.edges]);
+  });
   updateControlsFromGraph(graph);
   applyCaptions();
-  state.cy.nodes().forEach((n) => {
-    n.position({
-      x: state.cy.width() / 2 + (Math.random() - 0.5) * 400,
-      y: state.cy.height() / 2 + (Math.random() - 0.5) * 400
-    });
-  });
-  sim.restart();
+  runLayout();
+  if ((graph.nodes?.length || 0) > LIVE_PHYSICS_NODE_LIMIT) {
+    log(`Live physics skipped for ${graph.nodes.length} nodes; using a static scalable layout.`, "ok");
+  }
+}
+
+export function goBack() {
+  const previous = state.graphHistory.pop();
+  if (!previous) {
+    log("No previous graph view.", "error");
+    return;
+  }
+  renderGraph(previous, { pushHistory: false });
+  el("nodeCount").textContent = previous.nodes.length;
+  el("edgeCount").textContent = previous.edges.length;
+  el("rowCount").textContent = previous.edges.length;
+  log("Previous graph view restored.", "ok");
 }
 
 function renderTable(table) {

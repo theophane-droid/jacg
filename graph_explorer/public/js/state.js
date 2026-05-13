@@ -5,6 +5,7 @@ export const state = {
   selected: null,
   labelsVisible: true,
   lastGraph: { nodes: [], edges: [] },
+  graphHistory: [],
   contextTarget: null,
   graphConfig: { entityLabel: "IP", eventLabel: "Event", aggregateModes: [], widthMetrics: [] },
   timeline: {

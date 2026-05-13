@@ -625,8 +625,8 @@ export function createContextMenu() {
       <div class="context-section-title">Investigate</div>
       <button type="button" data-context-action="node-stats">Statistics</button>
       <button type="button" class="context-entity-only" data-context-action="expand-neighbors">Expand neighbors</button>
-      <button type="button" class="context-entity-only" data-context-action="outbound-events">Outbound events</button>
-      <button type="button" class="context-entity-only" data-context-action="inbound-events">Inbound events</button>
+      <button type="button" class="context-entity-only" data-context-action="outbound-events">Outbound aggregate</button>
+      <button type="button" class="context-entity-only" data-context-action="inbound-events">Inbound aggregate</button>
       <button type="button" class="context-event-only" data-context-action="event-details">Event details</button>
     </div>
 

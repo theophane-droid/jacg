@@ -1,12 +1,14 @@
 # Zeek JSONL to Neo4j importer
 
-Importe des logs Zeek JSONL dans Neo4j avec le modèle :
+![JACG graph visualization example](docs/image.png)
 
-```text
-(:Source)-[:SRC_OF]->(:Event)-[:DST_TO]->(:Destination)
-```
+Import JSONL logs into Neo4j for advanced visualisation.
 
-Ce modèle est plus adapté aux filtres temporels et aux pivots Cytoscape qu'une relation directe unique.
+## Requirements
+
+- Docker
+- Docker Compose
+- Python 3
 
 ## Installation
 
@@ -14,9 +16,10 @@ Ce modèle est plus adapté aux filtres temporels et aux pivots Cytoscape qu'une
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+docker compose up -d
 ```
 
-## Usage rapide
+## Quick Usage
 
 ```bash
 python3 zeek_jsonl_to_neo4j.py --preview zeek/logs/conn.jsonl
@@ -24,7 +27,7 @@ python3 zeek_jsonl_to_neo4j.py --dry-run zeek/logs/conn.jsonl
 python3 zeek_jsonl_to_neo4j.py zeek/logs/conn.jsonl
 ```
 
-## Générer une config
+## Generate a Config
 
 ```bash
 python3 zeek_jsonl_to_neo4j.py --init-config zeek_neo4j_config.example.json
@@ -33,7 +36,7 @@ python3 zeek_jsonl_to_neo4j.py --config zeek_neo4j_config.example.json --dry-run
 
 ## Timestamp
 
-Formats supportés :
+Supported formats:
 
 ```text
 none
@@ -43,7 +46,7 @@ iso
 python
 ```
 
-Exemple Zeek :
+Zeek example:
 
 ```json
 {
@@ -54,7 +57,7 @@ Exemple Zeek :
 }
 ```
 
-Exemple format Python :
+Python format example:
 
 ```json
 {
@@ -71,34 +74,34 @@ Exemple format Python :
 ```text
 zeek_jsonl_to_neo4j.py              Entrypoint
 zeek_neo4j_importer/
-  cli.py                            Arguments CLI
-  config.py                         Config JSON + .env
-  defaults.py                       Config par défaut
-  identifiers.py                    Labels, propriétés, identifiants Cypher
-  jsonl.py                          Lecture JSONL, flatten, preview
-  timeparse.py                      Parsing timestamp
-  model.py                          Transformation record -> row Neo4j
-  cypher.py                         Fragments Cypher
-  neo4j_client.py                   Connexion, contraintes, import, delete
-  interactive.py                    Configuration interactive
+  cli.py                            CLI arguments
+  config.py                         JSON config + .env
+  defaults.py                       Default config
+  identifiers.py                    Labels, properties, Cypher identifiers
+  jsonl.py                          JSONL reading, flattening, preview
+  timeparse.py                      Timestamp parsing
+  model.py                          Record -> Neo4j row transformation
+  cypher.py                         Cypher fragments
+  neo4j_client.py                   Connection, constraints, import, delete
+  interactive.py                    Interactive configuration
 ```
 
-## Supprimer un import
+## Delete an Import
 
 ```bash
 python3 zeek_jsonl_to_neo4j.py --config zeek_neo4j_config.example.json --delete-import
 ```
 
 
-## Profils netgraph
+## Netgraph Profiles
 
-Les profils sont stockés dans :
+Profiles are stored in:
 
 ```text
 netgraph_profiles/*.json
 ```
 
-Ils permettent de sauvegarder/recharger un mapping de log, par exemple :
+They save and reload log mappings, for example:
 
 ```text
 conn_profile.json   IP -> ConnEvent -> IP
@@ -107,10 +110,10 @@ http_profile.json   IP -> HttpEvent -> Host/URI
 ssl_profile.json    IP -> SslEvent -> ServerName
 ```
 
-Migrer les anciens profils vers le modèle `Source -> Event -> Destination` :
+Migrate older profiles to the `Source -> Event -> Destination` model:
 
 ```bash
 python3 zeek_jsonl_to_neo4j.py --migrate-profiles
 ```
 
-Pendant la configuration interactive, le script propose maintenant de charger un profil existant et de sauvegarder le mapping courant comme profil.
+During interactive configuration, the script can load an existing profile and save the current mapping as a profile.

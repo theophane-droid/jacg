@@ -36,6 +36,11 @@
       "service",
       "id.orig_p",
       "id.resp_p",
+      "orig_bytes",
+      "resp_bytes",
+      "duration",
+      "orig_pkts",
+      "resp_pkts",
       "conn_state",
       "history"
     ],
@@ -58,6 +63,11 @@
       "service",
       "id.orig_p",
       "id.resp_p",
+      "orig_bytes",
+      "resp_bytes",
+      "duration",
+      "orig_pkts",
+      "resp_pkts",
       "conn_state",
       "history"
     ],

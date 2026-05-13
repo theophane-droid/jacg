@@ -91,7 +91,7 @@ def interactive_config(paths: list[Path], base_config: dict[str, Any] | None = N
             profile_path = profiles[int(choice) - 1]
             config = merge_dict(config, load_profile(profile_path))
 
-            # Important : on conserve les fichiers passés à la commande.
+            # Preserve the files passed on the command line.
             config["input"]["paths"] = [str(path) for path in paths]
 
             graph = config["graph"]

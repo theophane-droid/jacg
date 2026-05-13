@@ -1,6 +1,8 @@
 import { state } from "./state.js";
 import { el } from "./dom.js";
 
+export const LIVE_PHYSICS_NODE_LIMIT = 350;
+
 export const sim = {
   alpha: 0,
   alphaDecay: 0.014,
@@ -13,10 +15,21 @@ export const sim = {
   chargeStrength: 900,
   linkStrength: 0.18,
   gravityStrength: 0.04,
+  tickCount: 0,
+  maxTicks: 900,
 
   heat(value = 0.45) {
+    if (!this.canRun()) return;
     this.alpha = Math.max(this.alpha, value);
     if (!this.running) this._loop();
+  },
+
+  canRun() {
+    return Boolean(
+      state.cy &&
+      state.cy.nodes().length <= LIVE_PHYSICS_NODE_LIMIT &&
+      el("physicsLive")?.checked
+    );
   },
 
   stop() {
@@ -28,17 +41,20 @@ export const sim = {
     this.vx = {};
     this.vy = {};
     this.alpha = 1.0;
+    this.tickCount = 0;
     this.stop();
-    if (el("physicsLive")?.checked) this._loop();
+    if (this.canRun()) this._loop();
   },
 
   _loop() {
+    if (!this.canRun()) return;
     this.running = true;
     const tick = () => {
-      if (!this.running || !state.cy || state.cy.nodes().empty()) return;
+      if (!this.running || !state.cy || state.cy.nodes().empty() || !this.canRun()) return;
       this._applyForces();
+      this.tickCount += 1;
       this.alpha *= (1 - this.alphaDecay);
-      if (this.alpha < this.alphaMin) { this.running = false; return; }
+      if (this.alpha < this.alphaMin || this.tickCount >= this.maxTicks) { this.running = false; return; }
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);
@@ -149,5 +165,7 @@ export function syncSimParams() {
   sim.chargeStrength = physicsNumber("physicsNodeRepulsion") * 2.5;
   sim.linkStrength = physicsNumber("physicsEdgeElasticity") / 500;
   sim.gravityStrength = physicsNumber("physicsGravity", 100) * 0.002;
+  sim.alphaDecay = Math.max(0.004, Math.min(0.25, 1 - physicsNumber("physicsCoolingFactor", 100)));
+  sim.maxTicks = Math.max(50, Math.min(3000, physicsNumber("physicsIterations")));
   state.defaultPhysics.idealEdgeLength = physicsNumber("physicsIdealEdgeLength");
 }

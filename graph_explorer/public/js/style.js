@@ -83,7 +83,7 @@ function nodeThreatColor(node) {
     props.compromised, props.reachable, props.bottleneck,
     data.label, data.caption
   ].join(" ").toLowerCase();
-  if (props.compromised === true || haystack.includes("compromis")) return "#da3633";
+  if (props.compromised === true || haystack.includes("compromised")) return "#da3633";
   if (props.bottleneck === true || haystack.includes("bottleneck") || haystack.includes("monitor")) return "#00f5d4";
   if (props.reachable === true || haystack.includes("reachable") || haystack.includes("risk")) return "#d29922";
   if (node.degree(false) >= 5) return "#00f5d4";
