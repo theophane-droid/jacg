@@ -1,6 +1,7 @@
-# Zeek JSONL to Neo4j importer
-
+# JACG - Just a Cyber Graph
 ![JACG graph visualization example](docs/image.png)
+
+PoC for graph visualisation of investigation data. Has been mainly tried on zeek.
 
 Import JSONL logs into Neo4j for advanced visualisation.
 
