@@ -202,6 +202,15 @@ export function applyStyle() {
     .selector("node.external").style({ "border-color": "rgba(56,189,248,0.45)", "border-width": 1 })
     .selector("node.has-note").style({ "border-color": "#f4a261", "border-width": 2 })
     .selector("node.custom-color").style({ "shadow-opacity": 0.38 })
+    .selector("node.pivot").style({
+      "border-color": "#00f5d4",
+      "border-width": 5,
+      "shadow-blur": 22,
+      "shadow-color": "#00f5d4",
+      "shadow-opacity": 0.9,
+      "z-index": 20,
+      label: "data(renderLabel)"
+    })
     .selector("edge").style({
       width: "data(width)", opacity: 0.4,
       "line-color": "data(edgeColor)",

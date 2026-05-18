@@ -6,6 +6,11 @@ export const state = {
   labelsVisible: true,
   lastGraph: { nodes: [], edges: [] },
   graphHistory: [],
+  neighborhood: {
+    active: false,
+    pivot: null,
+    previousFilters: null
+  },
   contextTarget: null,
   graphConfig: { entityLabel: "IP", eventLabel: "Event", aggregateModes: [], widthMetrics: [] },
   timeline: {

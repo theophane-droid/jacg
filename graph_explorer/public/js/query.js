@@ -13,6 +13,32 @@ function cloneGraph(graph) {
   };
 }
 
+function mergeGraph(base = { nodes: [], edges: [] }, incoming = { nodes: [], edges: [] }) {
+  const nodes = new Map();
+  const edges = new Map();
+
+  for (const node of base.nodes || []) {
+    if (node?.data?.id) nodes.set(node.data.id, node);
+  }
+
+  for (const node of incoming.nodes || []) {
+    if (node?.data?.id) nodes.set(node.data.id, node);
+  }
+
+  for (const edge of base.edges || []) {
+    if (edge?.data?.id) edges.set(edge.data.id, edge);
+  }
+
+  for (const edge of incoming.edges || []) {
+    if (edge?.data?.id) edges.set(edge.data.id, edge);
+  }
+
+  return {
+    nodes: [...nodes.values()],
+    edges: [...edges.values()]
+  };
+}
+
 function updatePhysicsNotice(nodeCount) {
   const notice = el("physicsNotice");
   if (!notice) return;
@@ -27,19 +53,20 @@ function updatePhysicsNotice(nodeCount) {
   notice.classList.add("hidden");
 }
 
-export function renderGraph(graph, { pushHistory = true } = {}) {
-  const nodeCount = graph.nodes?.length || 0;
+export function renderGraph(graph, { pushHistory = true, append = false } = {}) {
+  const nextGraph = append ? mergeGraph(state.lastGraph, graph) : graph;
+  const nodeCount = nextGraph.nodes?.length || 0;
   if (pushHistory && state.lastGraph?.nodes?.length) {
     state.graphHistory.push(cloneGraph(state.lastGraph));
     if (state.graphHistory.length > 30) state.graphHistory.shift();
   }
-  state.lastGraph = graph;
+  state.lastGraph = nextGraph;
   sim.stop();
   state.cy.batch(() => {
     state.cy.elements().remove();
-    state.cy.add([...graph.nodes, ...graph.edges]);
+    state.cy.add([...nextGraph.nodes, ...nextGraph.edges]);
   });
-  updateControlsFromGraph(graph);
+  updateControlsFromGraph(nextGraph);
   applyCaptions();
   runLayout();
   updatePhysicsNotice(nodeCount);

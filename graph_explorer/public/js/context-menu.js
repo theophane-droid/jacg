@@ -625,6 +625,7 @@ export function createContextMenu() {
       <div class="context-section-title">Investigate</div>
       <button type="button" data-context-action="node-stats">Statistics</button>
       <button type="button" class="context-entity-only" data-context-action="expand-neighbors">Expand neighbors</button>
+      <button type="button" class="context-entity-only" data-context-action="expand-neighbors-append">Expand neighbors here</button>
       <button type="button" class="context-entity-only" data-context-action="outbound-events">Outbound aggregate</button>
       <button type="button" class="context-entity-only" data-context-action="inbound-events">Inbound aggregate</button>
       <button type="button" class="context-event-only" data-context-action="event-details">Event details</button>
@@ -679,6 +680,7 @@ export function createContextMenu() {
     try {
       if (action === "copy") await copyElement();
       if (action === "expand-neighbors") await expandNode(state.contextTarget, "both");
+      if (action === "expand-neighbors-append") await expandNode(state.contextTarget, "both", { append: true });
       if (action === "outbound-events") await expandNode(state.contextTarget, "outbound");
       if (action === "inbound-events") await expandNode(state.contextTarget, "inbound");
       if (action === "event-details") await loadEventDetails(state.contextTarget);

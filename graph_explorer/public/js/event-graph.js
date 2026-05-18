@@ -9,6 +9,11 @@ function val(id) {
   return el(id)?.value?.trim?.() || "";
 }
 
+function setVal(id, value) {
+  const node = el(id);
+  if (node) node.value = value;
+}
+
 function setText(id, value) {
   const node = el(id);
   if (node) node.textContent = value;
@@ -179,12 +184,99 @@ function formatTimelineDate(value) {
 
 
 function eventFilterExtras() {
+  if (state.neighborhood.active) {
+    return { eventWhere: "" };
+  }
+
   return {
     eventWhere: val("eventCypherFilter")
   };
 }
 
+function filterSnapshot() {
+  return {
+    filterField: val("filterField"),
+    filterValue: val("filterValue"),
+    eventSearch: val("eventSearch"),
+    eventCypherFilter: val("eventCypherFilter")
+  };
+}
+
+function restoreFilterSnapshot(snapshot) {
+  if (!snapshot) return;
+  setVal("filterField", snapshot.filterField || "");
+  setVal("filterValue", snapshot.filterValue || "");
+  setVal("eventSearch", snapshot.eventSearch || "");
+  setVal("eventCypherFilter", snapshot.eventCypherFilter || "");
+}
+
+function cypherStringLiteral(value) {
+  return `'${String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
+}
+
+function pivotWhere(value) {
+  const literal = cypherStringLiteral(value);
+  return `toString(src.value) = ${literal} OR toString(dst.value) = ${literal} OR toString(src.name) = ${literal} OR toString(dst.name) = ${literal} OR elementId(src) = ${literal} OR elementId(dst) = ${literal}`;
+}
+
+function setNeighborhoodBar(active, text = "") {
+  const bar = el("neighborhoodBar");
+  const label = el("neighborhoodText");
+  if (!bar || !label) return;
+  label.textContent = text || "Neighborhood view";
+  bar.classList.toggle("hidden", !active);
+}
+
+function markPivotNode(data) {
+  const pivotValue = String(data.value || data.caption || data.name || data.id || "");
+  const pivotId = String(data.id || "");
+
+  state.cy.nodes().removeClass("pivot");
+  state.cy.nodes().filter((node) => {
+    const nodeData = node.data();
+    return (
+      node.id() === pivotId ||
+      String(nodeData.id || "") === pivotId ||
+      String(nodeData.value || "") === pivotValue ||
+      String(nodeData.caption || "") === pivotValue ||
+      String(nodeData.label || "") === pivotValue
+    );
+  }).addClass("pivot");
+}
+
+function enterNeighborhoodState(data, direction) {
+  if (!state.neighborhood.active) {
+    state.neighborhood.previousFilters = filterSnapshot();
+  }
+
+  const pivot = data.value || data.caption || data.name || data.id;
+  state.neighborhood.active = true;
+  state.neighborhood.pivot = { value: pivot, direction };
+
+  setVal("filterField", "");
+  setVal("filterValue", "");
+  setVal("eventSearch", "");
+  setVal("eventCypherFilter", `/* pivot filter applied by API */ ${pivotWhere(pivot)}`);
+
+  setNeighborhoodBar(true, `Neighborhood pivot: ${pivot}`);
+}
+
+export function exitNeighborhoodState() {
+  if (!state.neighborhood.active) return false;
+
+  restoreFilterSnapshot(state.neighborhood.previousFilters);
+  state.neighborhood.active = false;
+  state.neighborhood.pivot = null;
+  state.neighborhood.previousFilters = null;
+  setNeighborhoodBar(false);
+  return true;
+}
+
 function params() {
+  const pivotExtra = state.neighborhood.active && state.neighborhood.pivot?.value
+    ? { pivotValue: state.neighborhood.pivot.value }
+    : {};
+
   return new URLSearchParams({
     from: toIsoParam(val("timeFrom")),
     to: toIsoParam(val("timeTo")),
@@ -196,11 +288,16 @@ function params() {
     filterField: val("filterField"),
     filterValue: val("filterValue"),
     eventSearch: val("eventSearch"),
-    ...eventFilterExtras()
+    ...eventFilterExtras(),
+    ...pivotExtra
   });
 }
 
 export function currentTimeParams(extra = {}) {
+  const pivotExtra = state.neighborhood.active && state.neighborhood.pivot?.value
+    ? { pivotValue: state.neighborhood.pivot.value }
+    : {};
+
   return new URLSearchParams({
     from: toIsoParam(val("timeFrom")),
     to: toIsoParam(val("timeTo")),
@@ -211,6 +308,7 @@ export function currentTimeParams(extra = {}) {
     filterValue: val("filterValue"),
     eventSearch: val("eventSearch"),
     ...eventFilterExtras(),
+    ...pivotExtra,
     ...extra
   });
 }
@@ -320,21 +418,28 @@ export async function loadPairEvents(edge) {
   }
 }
 
-export async function expandNode(node, direction = "both") {
+export async function expandNode(node, direction = "both", { append = false } = {}) {
   const data = node.data();
   const nodeId = encodeURIComponent(data.id);
 
   try {
-    const query = currentTimeParams({ direction });
+    enterNeighborhoodState(data, direction);
+    const query = currentTimeParams({ direction, entityLabel: "__any", eventLabel: "__any" });
     const result = await api(`/api/graph/node/${nodeId}/neighbors?${query}`);
 
-    renderGraph(result.graph);
+    renderGraph(result.graph, { append });
+    markPivotNode(data);
 
     setText("nodeCount", result.summary.nodes);
     setText("edgeCount", result.summary.edges);
     setText("rowCount", result.summary.rows);
 
-    log(`Expanded ${direction} neighbors for ${data.caption || data.id}`, "ok");
+    if (append) {
+      setText("nodeCount", state.cy.nodes().length);
+      setText("edgeCount", state.cy.edges().length);
+    }
+
+    log(`Expanded ${direction} real neighbors for ${data.caption || data.id}${append ? " without clearing the graph" : ""}; previous filters are suspended, time range kept.`, "ok");
   } catch (e) {
     log(e.message, "error");
   }

@@ -9,7 +9,7 @@ import { goBack, runQuery, setPreset } from "./query.js";
 import { updateSuggestions } from "./cypher.js";
 import { clearHighlight, highlightNeighborhood, runAggregation, runPivot, selectedData, updateSelection } from "./interactions.js";
 import { createContextMenu, hideContextMenu, showCanvasContextMenu, showContextMenu } from "./context-menu.js";
-import { bindEventGraphControls, expandNode, loadAggregate, loadEventDetails, loadGraphConfig, loadPairEvents } from "./event-graph.js";
+import { bindEventGraphControls, exitNeighborhoodState, expandNode, loadAggregate, loadEventDetails, loadGraphConfig, loadPairEvents } from "./event-graph.js";
 
 async function refreshConnectionStatus() {
   const health = await api("/api/health");
@@ -98,7 +98,14 @@ async function init() {
   el("cy").addEventListener("contextmenu", (e) => e.preventDefault());
 
   el("runButton").addEventListener("click", () => runQuery());
-  el("graphBackButton").addEventListener("click", goBack);
+  el("graphBackButton").addEventListener("click", () => {
+    exitNeighborhoodState();
+    goBack();
+  });
+  el("neighborhoodBackButton").addEventListener("click", () => {
+    exitNeighborhoodState();
+    goBack();
+  });
   el("schemaButton").addEventListener("click", () => loadSchema().then(() => log("Schema refreshed", "ok")));
   el("layoutButton").addEventListener("click", () => runLayout());
   el("zoomInButton").addEventListener("click", () => {
@@ -110,6 +117,7 @@ async function init() {
   el("fitButton").addEventListener("click", () => state.cy.fit(undefined, 48));
   el("clearButton").addEventListener("click", () => {
     sim.stop();
+    exitNeighborhoodState();
     state.graphHistory = [];
     state.lastGraph = { nodes: [], edges: [] };
     state.cy.elements().remove();

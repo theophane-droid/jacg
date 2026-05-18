@@ -449,6 +449,54 @@ details:not([open]) summary::before {
   display: none;
 }
 
+.neighborhood-bar {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  max-width: min(520px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  background: rgba(13, 17, 23, 0.94);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  box-shadow: 0 0 0 2px rgba(0, 245, 212, 0.08);
+}
+
+.neighborhood-bar.hidden {
+  display: none;
+}
+
+.neighborhood-bar button {
+  width: 30px;
+  min-width: 30px;
+  height: 28px;
+  padding: 0;
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.neighborhood-bar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#cy .pivot {
+  border-width: 5px;
+  border-color: var(--accent);
+  border-opacity: 1;
+  shadow-blur: 22px;
+  shadow-color: var(--accent);
+  shadow-opacity: 0.9;
+}
+
 #selectionBar {
   position: absolute;
   z-index: 3;

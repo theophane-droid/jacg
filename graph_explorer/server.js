@@ -235,6 +235,21 @@ function eventFilters(reqQuery, params, clauses) {
   }
 }
 
+function eventPivotFilter(reqQuery, params, clauses) {
+  const pivotValue = String(reqQuery.pivotValue || "").trim();
+  if (!pivotValue) return;
+
+  clauses.push(`(
+    toString(src.value) = $pivotValue OR
+    toString(dst.value) = $pivotValue OR
+    toString(src.name) = $pivotValue OR
+    toString(dst.name) = $pivotValue OR
+    elementId(src) = $pivotValue OR
+    elementId(dst) = $pivotValue
+  )`);
+  params.pivotValue = pivotValue;
+}
+
 function cyNodeId(label, value) {
   return `${label}:${String(value)}`;
 }
@@ -934,6 +949,7 @@ app.get("/api/graph/aggregate", async (req, res) => {
     const params = { from: req.query.from || null, to: req.query.to || null, limit };
     dateWhere("e", params, clauses);
     eventFilters(req.query, params, clauses);
+    eventPivotFilter(req.query, params, clauses);
     const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
     const bytesExpr = eventBytesExpression("e");
     const sourceBytesExpr = eventSourceBytesExpression("e");
@@ -1062,6 +1078,7 @@ app.get("/api/graph/pair/events", async (req, res) => {
     if (!params.source || !params.target) throw new Error("source and target are required.");
     dateWhere("e", params, clauses);
     eventFilters(req.query, params, clauses);
+    eventPivotFilter(req.query, params, clauses);
     const result = await readQuery(`
       MATCH (${srcPattern})-[:SRC_OF]->(${eventPattern})-[:DST_TO]->(${dstPattern})
       WHERE ${clauses.join(" AND ")}
@@ -1091,6 +1108,7 @@ app.get("/api/graph/node/:nodeId/stats", async (req, res) => {
     const baseClauses = [];
     dateWhere("e", params, baseClauses);
     eventFilters(req.query, params, baseClauses);
+    eventPivotFilter(req.query, params, baseClauses);
     const outboundWhere = [`toString(coalesce(src.value, src.name, src.display, elementId(src))) = $value`, ...baseClauses].join(" AND ");
     const inboundWhere = [`toString(coalesce(dst.value, dst.name, dst.display, elementId(dst))) = $value`, ...baseClauses].join(" AND ");
     const bytesExpr = eventBytesExpression("e");
@@ -1312,6 +1330,7 @@ app.get("/api/graph/edge/stats", async (req, res) => {
     ];
     dateWhere("e", params, clauses);
     eventFilters(req.query, params, clauses);
+    eventPivotFilter(req.query, params, clauses);
     edgeGroupWhere(String(req.query.groupBy || "pair"), String(req.query.aggregateValue || ""), params, clauses);
     const where = clauses.join(" AND ");
     const bytesExpr = eventBytesExpression("e");
@@ -1578,6 +1597,7 @@ app.get("/api/graph/timeline", async (req, res) => {
     if (params.source) baseClauses.push("toString(coalesce(src.value, src.name, src.display, elementId(src))) = $source");
     if (params.target) baseClauses.push("toString(coalesce(dst.value, dst.name, dst.display, elementId(dst))) = $target");
     eventFilters(req.query, params, baseClauses);
+    eventPivotFilter(req.query, params, baseClauses);
 
     const boundsResult = await readQuery(`
       MATCH (${srcPattern})-[:SRC_OF]->(${eventPattern})-[:DST_TO]->(${dstPattern})
