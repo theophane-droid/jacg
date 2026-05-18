@@ -24,6 +24,10 @@ def get_driver(config: dict[str, Any]) -> Any:
     )
 
 
+def log_info(message: str) -> None:
+    print(f"[+] {message}", file=sys.stderr)
+
+
 def ensure_database(driver: Any, database: str) -> None:
     if database in {"", "neo4j", "system"}:
         return
@@ -32,7 +36,122 @@ def ensure_database(driver: Any, database: str) -> None:
         existing = session.run("SHOW DATABASES YIELD name RETURN collect(name) AS names").single()["names"]
 
         if database not in existing:
+            log_info(f"Creating Neo4j database '{database}'")
             session.run(f"CREATE DATABASE `{cypher_ident(database)}` IF NOT EXISTS").consume()
+
+
+def clear_database(session: Any, batch_size: int = 1000) -> tuple[int, int]:
+    total_rels = 0
+    total_nodes = 0
+    log_info(f"Deleting relationships in batches of {batch_size}")
+
+    while True:
+        deleted = session.run(
+            """
+            MATCH ()-[r]->()
+            WITH r LIMIT $limit
+            DELETE r
+            RETURN count(*) AS deleted
+            """,
+            limit=batch_size,
+        ).single()["deleted"]
+
+        total_rels += int(deleted)
+
+        if not deleted:
+            break
+
+        log_info(f"Deleted {total_rels} relationships")
+
+    log_info(f"Deleting nodes in batches of {batch_size}")
+    while True:
+        deleted = session.run(
+            """
+            MATCH (n)
+            WITH n LIMIT $limit
+            DELETE n
+            RETURN count(*) AS deleted
+            """,
+            limit=batch_size,
+        ).single()["deleted"]
+
+        total_nodes += int(deleted)
+
+        if not deleted:
+            return total_nodes, total_rels
+
+        log_info(f"Deleted {total_nodes} nodes")
+
+
+def drop_user_schema(session: Any) -> tuple[int, int]:
+    constraints = [
+        record["name"]
+        for record in session.run("SHOW CONSTRAINTS YIELD name RETURN name")
+        if record["name"]
+    ]
+
+    dropped_constraints = 0
+    for name in constraints:
+        log_info(f"Dropping constraint '{name}'")
+        session.run(f"DROP CONSTRAINT `{cypher_ident(name)}` IF EXISTS").consume()
+        dropped_constraints += 1
+
+    indexes = [
+        record["name"]
+        for record in session.run("SHOW INDEXES YIELD name, type RETURN name, type")
+        if record["name"] and record["type"] != "LOOKUP"
+    ]
+
+    dropped_indexes = 0
+    for name in indexes:
+        log_info(f"Dropping index '{name}'")
+        session.run(f"DROP INDEX `{cypher_ident(name)}` IF EXISTS").consume()
+        dropped_indexes += 1
+
+    return dropped_constraints, dropped_indexes
+
+
+def recreate_database(config: dict[str, Any]) -> dict[str, int | str]:
+    database = config["neo4j"].get("database") or "neo4j"
+
+    if database == "system":
+        raise ValueError("Refusing to recreate the Neo4j system database.")
+
+    driver = get_driver(config)
+
+    try:
+        if database != "neo4j":
+            log_info(f"Dropping Neo4j database '{database}'")
+            with driver.session(database="system") as session:
+                session.run(f"DROP DATABASE `{cypher_ident(database)}` IF EXISTS WAIT").consume()
+                log_info(f"Creating Neo4j database '{database}'")
+                session.run(f"CREATE DATABASE `{cypher_ident(database)}` IF NOT EXISTS WAIT").consume()
+
+            return {
+                "mode": "drop_create",
+                "database": database,
+                "deleted_nodes": 0,
+                "dropped_constraints": 0,
+                "dropped_indexes": 0,
+            }
+
+        log_info("Clearing default Neo4j database 'neo4j'")
+        with driver.session(database=database) as session:
+            deleted_nodes, deleted_rels = clear_database(session)
+            log_info("Dropping user constraints and indexes")
+            dropped_constraints, dropped_indexes = drop_user_schema(session)
+
+        return {
+            "mode": "clear_default",
+            "database": database,
+            "deleted_nodes": deleted_nodes,
+            "deleted_relationships": deleted_rels,
+            "dropped_constraints": dropped_constraints,
+            "dropped_indexes": dropped_indexes,
+        }
+
+    finally:
+        driver.close()
 
 
 def create_constraints(session: Any, labels: dict[str, str]) -> None:
@@ -63,6 +182,7 @@ def create_constraints(session: Any, labels: dict[str, str]) -> None:
 
     for statement in statements:
         session.run(statement).consume()
+    log_info(f"Ensured constraints/indexes for event label '{labels['event']}'")
 
 
 def write_batch(tx: Any, rows: list[dict[str, Any]], labels: dict[str, str], config: dict[str, Any]) -> None:
@@ -246,6 +366,7 @@ def import_records(config: dict[str, Any], dry_run: bool = False) -> int:
             ensure_database(driver, config["neo4j"]["database"])
 
         with driver.session(database=config["neo4j"]["database"]) as session:
+            log_info(f"Starting import into database '{config['neo4j']['database']}'")
             create_constraints(session, labels)
 
             batch: list[dict[str, Any]] = []
@@ -262,12 +383,13 @@ def import_records(config: dict[str, Any], dry_run: bool = False) -> int:
                 if len(batch) >= batch_size:
                     session.execute_write(write_batch, batch, labels, config)
                     imported += len(batch)
-                    print(f"Imported: {imported} events", file=sys.stderr)
+                    log_info(f"Imported {imported} events")
                     batch = []
 
             if batch:
                 session.execute_write(write_batch, batch, labels, config)
                 imported += len(batch)
+                log_info(f"Imported {imported} events")
 
             return imported
 
@@ -280,6 +402,7 @@ def delete_import(config: dict[str, Any]) -> tuple[int, int]:
 
     try:
         with driver.session(database=config["neo4j"]["database"]) as session:
+            log_info(f"Deleting import '{config['graph']['import_label']}'")
             total_rels = 0
             total_nodes = 0
 
@@ -301,6 +424,8 @@ def delete_import(config: dict[str, Any]) -> tuple[int, int]:
                 if not deleted:
                     break
 
+                log_info(f"Deleted {total_rels} relationships")
+
             while True:
                 deleted = session.run(
                     """
@@ -318,6 +443,8 @@ def delete_import(config: dict[str, Any]) -> tuple[int, int]:
 
                 if not deleted:
                     break
+
+                log_info(f"Deleted {total_nodes} nodes")
 
             return total_nodes, total_rels
 

@@ -49,7 +49,7 @@ def apply_dotenv_to_config(config: dict[str, Any], env_path: Path = Path(".env")
     if not dotenv:
         return config
 
-    neo4j_config = config["neo4j"]
+    neo4j_config = config.setdefault("neo4j", {})
 
     if dotenv.get("NEO4J_AUTH") and "/" in dotenv["NEO4J_AUTH"]:
         username, password = dotenv["NEO4J_AUTH"].split("/", 1)

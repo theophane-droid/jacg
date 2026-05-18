@@ -35,6 +35,54 @@ python3 zeek_jsonl_to_neo4j.py --init-config zeek_neo4j_config.example.json
 python3 zeek_jsonl_to_neo4j.py --config zeek_neo4j_config.example.json --dry-run
 ```
 
+## Pipeline Import
+
+Use a pipeline config to ingest several datasetcreator sourcetypes in one run:
+
+```bash
+python3 importer.py --pipeline netgraph_pipeline.example.json --dry-run
+python3 importer.py --pipeline netgraph_pipeline.example.json
+```
+
+Pipeline sources map one or more input path patterns to a netgraph profile:
+
+```json
+{
+  "sources": [
+    {
+      "name": "conn",
+      "profile": "conn_ip",
+      "paths": ["../datasetcreator/output/conn*.jsonl"]
+    },
+    {
+      "name": "tls_client_ja3",
+      "profile": "tls_client_ip_ja3",
+      "paths": [
+        "../datasetcreator/output/ssl*.jsonl",
+        "../datasetcreator/output/tls*.jsonl"
+      ]
+    }
+  ]
+}
+```
+
+`paths` supports wildcards. If a file or pattern does not exist, the pipeline
+prints a warning and continues with the next pattern/source. This is useful for
+optional sourcetypes such as `tls*.jsonl` versus Zeek `ssl*.jsonl`.
+
+Each source can override normal config keys after its profile is loaded:
+
+```json
+{
+  "name": "conn_shared_import",
+  "profile": "conn_ip",
+  "paths": ["../datasetcreator/output/conn*.jsonl"],
+  "graph": {
+    "import_label": "DatasetCreatorImport"
+  }
+}
+```
+
 ## Timestamp
 
 Supported formats:
@@ -91,6 +139,38 @@ zeek_neo4j_importer/
 
 ```bash
 python3 zeek_jsonl_to_neo4j.py --config zeek_neo4j_config.example.json --delete-import
+```
+
+## Recreate The Database
+
+For a quick clean start, use `--recreate-database` before importing:
+
+```bash
+python3 importer.py --recreate-database
+python3 importer.py --pipeline netgraph_pipeline.example.json --recreate-database
+python3 importer.py --pipeline netgraph_pipeline.example.json
+```
+
+The target database comes from `.env`, `--config`, or the pipeline file
+`neo4j.database` value.
+
+Behavior:
+
+- named databases: runs `DROP DATABASE` then `CREATE DATABASE`;
+- default `neo4j` database: clears all nodes/relationships and drops user
+  constraints/indexes, which works with Neo4j Community;
+- `system` database: refused.
+
+This flag only resets the database and exits. Run the import or pipeline command
+afterward.
+
+Importer progress logs use the `[+]` prefix on stderr, for example:
+
+```text
+[+] Loading pipeline config 'netgraph_pipeline.example.json'
+[+] Starting pipeline with 9 source(s)
+[+] Importing source 'conn' with profile 'conn_ip' (1 file(s))
+[+] Imported 500 events
 ```
 
 ## Graph Explorer

@@ -1,0 +1,79 @@
+{
+  "name": "smb_ip_share",
+  "graph": {
+    "import_label": "SMBGraph",
+    "entity_node_label": "Entity",
+    "source_node_label": "IP",
+    "destination_node_label": "SMBShare",
+    "source_caption_fields": [
+      "id.orig_h"
+    ],
+    "destination_caption_fields": [
+      "path"
+    ],
+    "edge_caption_fields": [
+      "service",
+      "share_type"
+    ],
+    "source_fields": [
+      "id.orig_h"
+    ],
+    "destination_fields": [
+      "path"
+    ],
+    "source_node_key_fields": [
+      "id.orig_h"
+    ],
+    "destination_node_key_fields": [
+      "path"
+    ],
+    "relationship_type": "",
+    "edge_mode": "event",
+    "edge_property_fields": [
+      "uid",
+      "ts",
+      "id.orig_h",
+      "id.orig_p",
+      "id.resp_h",
+      "id.resp_p",
+      "path",
+      "service",
+      "native_file_system",
+      "share_type"
+    ],
+    "timestamp_field": "ts",
+    "event_id_fields": [
+      "uid",
+      "_path",
+      "ts"
+    ],
+    "include_all_event_properties": false,
+    "include_raw_json": false,
+    "aggregations": [],
+    "event_node_label": "SmbEvent",
+    "source_event_relationship_type": "SRC_OF",
+    "event_destination_relationship_type": "DST_TO",
+    "event_property_fields": [
+      "uid",
+      "ts",
+      "id.orig_h",
+      "id.orig_p",
+      "id.resp_h",
+      "id.resp_p",
+      "path",
+      "service",
+      "native_file_system",
+      "share_type"
+    ],
+    "event_caption_fields": [
+      "path",
+      "service",
+      "share_type",
+      "uid"
+    ],
+    "timestamp_enabled": true,
+    "timestamp_format": "epoch_float",
+    "timestamp_python_format": "",
+    "timestamp_timezone": "UTC"
+  }
+}

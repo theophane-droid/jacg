@@ -1,0 +1,103 @@
+{
+  "name": "tls_client_ip_ja3",
+  "graph": {
+    "import_label": "TLSClientJA3Graph",
+    "entity_node_label": "Entity",
+    "source_node_label": "IP",
+    "destination_node_label": "JA3Fingerprint",
+    "source_caption_fields": [
+      "id.orig_h"
+    ],
+    "destination_caption_fields": [
+      "ja3",
+      "client_tls_profile"
+    ],
+    "edge_caption_fields": [
+      "server_name",
+      "version",
+      "cipher"
+    ],
+    "source_fields": [
+      "id.orig_h"
+    ],
+    "destination_fields": [
+      "ja3"
+    ],
+    "source_node_key_fields": [
+      "id.orig_h"
+    ],
+    "destination_node_key_fields": [
+      "ja3"
+    ],
+    "relationship_type": "",
+    "edge_mode": "event",
+    "edge_property_fields": [
+      "uid",
+      "ts",
+      "id.orig_h",
+      "id.orig_p",
+      "id.resp_h",
+      "id.resp_p",
+      "version",
+      "cipher",
+      "curve",
+      "server_name",
+      "resumed",
+      "last_alert",
+      "next_protocol",
+      "established",
+      "validation_status",
+      "ja3",
+      "ja3s",
+      "client_tls_profile",
+      "client_tls_impl",
+      "server_tls_profile",
+      "server_tls_impl"
+    ],
+    "timestamp_field": "ts",
+    "event_id_fields": [
+      "uid",
+      "_path",
+      "ts"
+    ],
+    "include_all_event_properties": false,
+    "include_raw_json": false,
+    "aggregations": [],
+    "event_node_label": "TLSEvent",
+    "source_event_relationship_type": "SRC_OF",
+    "event_destination_relationship_type": "DST_TO",
+    "event_property_fields": [
+      "uid",
+      "ts",
+      "id.orig_h",
+      "id.orig_p",
+      "id.resp_h",
+      "id.resp_p",
+      "version",
+      "cipher",
+      "curve",
+      "server_name",
+      "resumed",
+      "last_alert",
+      "next_protocol",
+      "established",
+      "validation_status",
+      "ja3",
+      "ja3s",
+      "client_tls_profile",
+      "client_tls_impl",
+      "server_tls_profile",
+      "server_tls_impl"
+    ],
+    "event_caption_fields": [
+      "server_name",
+      "version",
+      "cipher",
+      "uid"
+    ],
+    "timestamp_enabled": true,
+    "timestamp_format": "epoch_float",
+    "timestamp_python_format": "",
+    "timestamp_timezone": "UTC"
+  }
+}

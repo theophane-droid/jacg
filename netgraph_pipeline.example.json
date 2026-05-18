@@ -1,0 +1,81 @@
+{
+  "continue_on_error": false,
+  "neo4j": {
+    "uri": "bolt://localhost:7687",
+    "username": "neo4j",
+    "password": "change-me-strong-password",
+    "database": "neo4j",
+    "create_database": false
+  },
+  "input": {
+    "sample_size": 50,
+    "batch_size": 500
+  },
+  "sources": [
+    {
+      "name": "conn",
+      "profile": "conn_ip",
+      "paths": [
+        "../datasetcreator/output/conn*.jsonl"
+      ]
+    },
+    {
+      "name": "dns",
+      "profile": "dns_ip_query",
+      "paths": [
+        "../datasetcreator/output/dns*.jsonl"
+      ]
+    },
+    {
+      "name": "dce_rpc",
+      "profile": "dce_rpc",
+      "paths": [
+        "../datasetcreator/output/dce_rpc*.jsonl"
+      ]
+    },
+    {
+      "name": "kerberos",
+      "profile": "kerberos_client_service",
+      "paths": [
+        "../datasetcreator/output/kerberos*.jsonl"
+      ]
+    },
+    {
+      "name": "ssh",
+      "profile": "ssh_ip_server",
+      "paths": [
+        "../datasetcreator/output/ssh*.jsonl"
+      ]
+    },
+    {
+      "name": "smb_mapping",
+      "profile": "smb_ip_share",
+      "paths": [
+        "../datasetcreator/output/smb_mapping*.jsonl"
+      ]
+    },
+    {
+      "name": "credential",
+      "profile": "credential_principal_host",
+      "paths": [
+        "../datasetcreator/output/credential*.jsonl"
+      ]
+    },
+    {
+      "name": "tls_client_ja3",
+      "profile": "tls_client_ip_ja3",
+      "paths": [
+        "../datasetcreator/output/ssl*.jsonl",
+        "../datasetcreator/output/tls*.jsonl"
+      ]
+    },
+    {
+      "name": "tls_server_ja3s",
+      "profile": "tls_server_ip_ja3s",
+      "paths": [
+        "../datasetcreator/output/ssl*.jsonl",
+        "../datasetcreator/output/tls*.jsonl"
+      ]
+    }
+  ]
+}
