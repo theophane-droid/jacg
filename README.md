@@ -3,6 +3,8 @@
 
 PoC for graph visualisation of investigation data. Has been mainly tried on zeek.
 
+Find the article at [nobisd.fr/posts/cyber-graph-dfir](https://nobisd.fr/posts/cyber-graph-dfir/).
+
 Import JSONL logs into Neo4j for advanced visualisation.
 
 ## Requirements
